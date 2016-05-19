@@ -1,22 +1,22 @@
-function [x,y] = Spectral_Analysis(input_file, output_file)
+function [x,y] = Spectral_Analysis(stimulus_file, response_file)
 
 fps = 600;
 
 if (isunix) %# Linux, Mac
-    [status, result] = system( ['wc -l ', input_file] );
+    [status, result] = system( ['wc -l ', stimulus_file] );
     numlines = str2num(result);
 
 elseif (ispc) %# Windows
-    numlines = str2num( perl('countlines.pl', output_file) );
+    numlines = str2num( perl('countlines.pl', response_file) );
 
 else
     error('...');
 
 end
 
-x = csvread(input_file);
+x = csvread(stimulus_file);
 
-y = csvread(output_file);
+y = csvread(response_file);
 
 data = iddata(y, x, (1/fps));
 
