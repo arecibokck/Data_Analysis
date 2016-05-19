@@ -13,7 +13,7 @@ function PlotHeadandThorax(data)
     thetahead = 180 * (unwrap(theta1)) / pi; % to make angles continous
     thetathorax = 180 * (unwrap(theta2)) / pi;
     theta = thetahead - thetathorax; % angle between head and thorax
-    csvwrite('input.csv', thetahead);
+    csvwrite('input.csv', thetathorax);
     csvwrite('output.csv', theta);
     Z = length(data) / 3000;
     X = 0:Z / (length(data) - 1):Z; % Converting X-axis to time
