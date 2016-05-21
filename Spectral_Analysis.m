@@ -18,7 +18,7 @@ x = csvread(stimulus_file);
 
 y = csvread(response_file);
 
-data = iddata(y, x, (1/fps));
+data = iddata(detrend(y), detrend(x), (1/fps));
 
 f = logspace(0,1,100);
 
