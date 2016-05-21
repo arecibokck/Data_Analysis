@@ -36,17 +36,27 @@ f = Fs*(-nfft/2:nfft/2-1)/nfft; %Frequency Range
 
 dt = 1/Fs; %Frequency resolution
 
-figure(1),
+figure(1)
+set(0,'defaultaxesFontName', 'CMU Serif Roman')
+set(0,'defaultaxesFontSize', 12)
+%set(gcf, 'PaperPositionMode', );
 subplot(2,1,1)
 plot(((0:(n-1)) * dt),signal)
 title('Response');
 xlabel('Time (s)'); 
-ylabel('Signal(t)');
+ylabel('Amplitude (degrees)');
 subplot(2,1,2)  
 plot(f,2*msignaldft);
 zoom xon;
-zoom(150);
-title('Amplitude Spectrum with Hann Window');
+zoom(100);
+grid on
+title('Amplitude Spectrum');
 xlabel('Frequency (Hz)'); 
-ylabel('|Signal(f)|');
+ylabel('Amplitude (dB)');
+legend(sprintf( '%s\n%s', 'FFT of Response', 'with Hanning Window'), 'Location', 'NorthEast');
+legend('boxoff');
+fig = gcf;
+fig.PaperUnits = 'inches';
+fig.PaperPosition = [0 0 10 6];
+print -dpng FreqResp.png
 end
