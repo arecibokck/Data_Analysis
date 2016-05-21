@@ -20,7 +20,7 @@ y = csvread(response_file);
 
 data = iddata(y, x, (1/fps));
 
-f = logspace(0,2,100);
+f = logspace(0,1,100);
 
 G = spa(data,numlines,f);
 

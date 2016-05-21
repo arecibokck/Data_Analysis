@@ -23,6 +23,10 @@ L = n; % Window Length of FFT
 nfft = 2^nextpow2(L); % Transform length
 padding = (nfft - L)/2; %zero padding length on either side of signal
 
+%Peak at 0 Hz due to DC mean component
+signal = detrend(signal, 'constant'); %detrend data to remove DC Mean Component (subtract average from each 
+                                      %data-point) - Now there is no peak at 0 Hz 
+
 signal_HannWnd = signal.*hanning(L, 'periodic'); %Apply Hann Window
 signal_HannWnd = padarray(signal_HannWnd, padding); %zero padding of signal
 signaldft_HannWnd = fftshift(fft(signal_HannWnd,nfft)); %FFT of signal
