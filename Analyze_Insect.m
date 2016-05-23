@@ -1,4 +1,4 @@
-function [dirListing] = Analyze_Insect(insect)
+function Analyze_Insect(insect)
     folder = 'E:\NCBS_Head_Stabilization_Project\Data Analysis\Data\';
     dirListing = dir(strcat(folder, insect));
     dirListing(~[dirListing.isdir]) = [];
@@ -28,7 +28,7 @@ function [dirListing] = Analyze_Insect(insect)
                 end
             end
             fast_FT(subList_Pre(s_index).name, subList_Pre(r_index).name, 600, currentdir, 'sine');
-            %Correlation
+            %Correlation(subList_Pre(s_index).name,subList_Pre(r_index).name, 600, currentdir, 'sine');
             
             %CHIRP
             data_ch = Arrange_Points(subList_Pre(2).name);
@@ -46,7 +46,7 @@ function [dirListing] = Analyze_Insect(insect)
                 end
             end
             fast_FT(subList_Pre(s_index).name, subList_Pre(r_index).name, 600, currentdir, 'chirp');
-            %Correlation
+            %Correlation(subList_Pre(s_index).name,subList_Pre(r_index).name, 600, currentdir, 'chirp');
             %Spec_Analysis(subList_Pre(s_index).name, subList_Pre(r_index).name, currentdir, 'chirp_bode');
             %delete(strcat(currentdir,'\stimulus_s.csv'), strcat(currentdir,'\response_s.csv'), strcat(currentdir,'\stimulus_ch.csv'), strcat(currentdir,'\response_ch.csv'));
         
@@ -72,7 +72,7 @@ function [dirListing] = Analyze_Insect(insect)
                 end
             end
             fast_FT(subList_Pre(s_index).name, subList_Pre(r_index).name, 600, currentdir, 'sine');
-            %Correlation
+            %Correlation(subList_Pre(s_index).name,subList_Pre(r_index).name, 600, currentdir, 'sine');
             
             %CHIRP
             data_ch = Arrange_Points(subList_Pre(2).name);
@@ -90,7 +90,7 @@ function [dirListing] = Analyze_Insect(insect)
                 end
             end
             fast_FT(subList_Pre(s_index).name, subList_Pre(r_index).name, 600, currentdir, 'chirp');
-            %Correlation
+            %Correlation(subList_Pre(s_index).name,subList_Pre(r_index).name, 600, currentdir, 'chirp');
             %Spec_Analysis(subList_Pre(s_index).name, subList_Pre(r_index).name, currentdir, 'chirp_bode');
             %delete(strcat(currentdir,'\stimulus_s.csv'), strcat(currentdir,'\response_s.csv'), strcat(currentdir,'\stimulus_ch.csv'), strcat(currentdir,'\response_ch.csv'));
         end

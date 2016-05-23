@@ -57,7 +57,7 @@ function fast_FT(stimulus, response, sam, folder, name)
     fig = gcf;
     fig.PaperUnits = 'inches';
     fig.PaperPosition = [0 0 10 6];
-    img_name = strcat(strcat(folder,'\'), name);
+    img_name = strcat(strcat(folder,'\'), strcat('DFT_',name));
     print ('-dpng', img_name);
 
     %{

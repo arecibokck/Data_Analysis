@@ -1,4 +1,8 @@
-function [corr] = Correlation()
+function Correlation(stimulus, response, Fs, folder, name)
+    
+    signal_s = detrend(csvread(stimulus));
+    signal_r = detrend(csvread(response));
+
     [y_a, lag_a] = xcorr(signal_s, 'coeff')
     [~,A] = max(abs(y_a));
     lagDiff_a = lag_a(A)
@@ -23,4 +27,15 @@ function [corr] = Correlation()
     xlabel('Lag (s)'); 
     ylabel('Normalized CF');
     legend('AutoCorr \theta_{Body-Body}', 'CrossCorr \theta_{Head-Body}', 'Location', 'SouthEast');
+    hold off;
+    fig = gcf;
+    fig.PaperUnits = 'inches';
+    fig.PaperPosition = [0 0 10 6];
+    img_name = strcat(strcat(folder,'\'), strcat('Correlation_',name));
+    print ('-dpng', img_name);
+    %{
+    pause('on');
+    pause(1);
+    %}
+    close(gcf);
 end
