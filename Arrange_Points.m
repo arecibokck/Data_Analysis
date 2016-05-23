@@ -1,7 +1,7 @@
-function sorted_data = ArrangePoints(filename)
+function sorted_data = Arrange_Points(filename)
     fileID = fopen(filename,'r');
     dataArray = textscan(fileID, '%f%f%f%f%f%f%f%f%f%[^\n\r]', inf, ...
-                         'Delimiter', ',', 'HeaderLines', 9);
+                         'Delimiter', ',', 'HeaderLines', 10);
     fclose(fileID);
     data = [dataArray{1:end-1}];
     data = data(:, 2:9);
