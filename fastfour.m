@@ -47,7 +47,7 @@ plot(f,2*msignalsdft);
 zoom xon;
 zoom(30);
 grid on
-title('A(s) of Stimulus');
+title('FFT of Stimulus');
 xlabel('Frequency (Hz)'); 
 ylabel('Amplitude (dB)');
 subplot(2,2,2)
@@ -60,13 +60,36 @@ plot(f,2*msignalrdft);
 zoom xon;
 zoom(30);
 grid on
-title('A(s) of Response');
+title('FFT of Response');
 xlabel('Frequency (Hz)'); 
 ylabel('Amplitude (dB)');
 fig = gcf;
 fig.PaperUnits = 'inches';
 fig.PaperPosition = [0 0 10 6];
 print -dpng FourSpec.png
+
+[y_a, lag_a] = xcorr(signal_s, 'coeff')
+%[~,A] = max(abs(y_a));
+%lagDiff_a = lag_a(A)
+%timeDiff_a = lagDiff_a/Fs
+t_a = (-length(y_a)/2:length(y_a)/2-1)/Fs
+
+[y_c, lag_c] = xcorr(signal_s, signal_r, 'coeff')
+%[~,C] = max(abs(y_c));
+%lagDiff_c = lag_c(C)
+%timeDiff_c = lagDiff_c/Fs
+t_c = (-length(y_c)/2:length(y_c)/2-1)/Fs
+
+figure(2)
+set(0,'defaultaxesFontName', 'CMU Serif Roman')
+set(0,'defaultaxesFontSize', 12)
+plot(t_a, y_a, 'b.');
+hold on;
+plot(t_c, y_c, 'r.');
+title('Correlation');
+xlabel('Lag (s)'); 
+ylabel('CF');
+legend('AutoCorr', 'CrossCorr', 'Location', 'NorthEast');
 
 end
 
