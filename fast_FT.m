@@ -3,11 +3,11 @@
 % signal=times series data
 % sam=frequency of sampling
 
-function fast_FT(stimulus, response, sam, folder, name)
-
+function fast_FT(s , r, sam, folder, name)
+    
     %Peak at 0 Hz due to DC mean component
-    signal_s = detrend(csvread(stimulus)); %detrend data to remove DC Mean Component (subtract average from each 
-    signal_r = detrend(csvread(response)); %data-point) - Now there is no peak at 0 Hz 
+    signal_s = detrend(s); %detrend data to remove DC Mean Component (subtract average from each 
+    signal_r = detrend(r); %data-point) - Now there is no peak at 0 Hz 
 
     Fs = sam;
 
@@ -15,15 +15,14 @@ function fast_FT(stimulus, response, sam, folder, name)
     L = n; % Window Length of FFT
     nfft = 2^nextpow2(L); % Transform length
     padding = round((nfft - L)/2); %zero padding length on either side of signal
-
+    
     msignalsdft = Signal_Mod(signal_s, L, nfft, padding); 
     msignalrdft = Signal_Mod(signal_r, L, nfft, padding); 
 
     f = Fs*(-nfft/2:nfft/2-1)/nfft; %Frequency Range
 
     dt = 1/Fs; %Frequency resolution
-
-
+    
     figure(1)
     set(0,'defaultaxesFontName', 'CMU Serif Roman')
     set(0,'defaultaxesFontSize', 12)
@@ -57,19 +56,20 @@ function fast_FT(stimulus, response, sam, folder, name)
     fig = gcf;
     fig.PaperUnits = 'inches';
     fig.PaperPosition = [0 0 10 6];
-    img_name = strcat(strcat(folder,'\'), strcat('DFT_',name));
+    img_name = strcat(folder, name, '_DFT');
     print ('-dpng', img_name);
+    close(gcf);
 
     %{
     pause('on');
     pause(1);
     %}
+    
     DFT_s = [f', 2*msignalsdft];
     DFT_r = [f', 2*msignalrdft];    
-    csvwrite(strcat(strcat(folder,'\'),strcat(name, '_dft.csv')), DFT_s);
-    csvwrite(strcat(strcat(folder,'\'),strcat(name, '_dft.csv')), DFT_r);
-    close(gcf);
-
+    csvwrite(strcat(folder, name, '_DFT.csv'), DFT_s);
+    csvwrite(strcat(folder, name, '_DFT.csv'), DFT_r);
+    
 end
 
 function [signaldft_HannWnd] = Signal_Mod(signal, L, nfft, padding)
@@ -77,4 +77,5 @@ function [signaldft_HannWnd] = Signal_Mod(signal, L, nfft, padding)
     signal_HannWnd = padarray(signal_HannWnd, padding); %zero padding of signal
     signaldft_HannWnd = abs(fftshift(fft(signal_HannWnd,nfft))); %Absolute values of FFT of signal
     return
+    
 end

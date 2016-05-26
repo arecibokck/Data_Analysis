@@ -1,13 +1,15 @@
-function Correlation(stimulus, response, Fs, folder, name)
+function Correlation(s, r, Fs, folder, name)
     
-    signal_s = detrend(csvread(stimulus));
-    signal_r = detrend(csvread(response));
+    N = length(s);
+    
+    signal_s = detrend(s); %detrend data to remove DC Mean Component (subtract average from each 
+    signal_r = detrend(r); %data-point) - Now there is no peak at 0 Hz 
 
     [y_a, lag_a] = xcorr(signal_s, 'coeff')
     [~,A] = max(abs(y_a));
     lagDiff_a = lag_a(A)
     timeDiff_a = lagDiff_a/Fs
-    y_a = y_a(10000:11000,1);
+    y_a = y_a(N/1.5:N-1, 1);
     t_a = (-length(y_a)/2:length(y_a)/2-1)/Fs
 
 
@@ -15,7 +17,7 @@ function Correlation(stimulus, response, Fs, folder, name)
     [~,C] = max(abs(y_c));
     lagDiff_c = lag_c(C)
     timeDiff_c = lagDiff_c/Fs
-    y_c = y_c(10000:11000,1);
+    y_c = y_c(N/1.5:N-1,1);
     t_c = (-length(y_c)/2:length(y_c)/2-1)/Fs
     figure(2)
     set(0,'defaultaxesFontName', 'CMU Serif Roman')
@@ -31,7 +33,7 @@ function Correlation(stimulus, response, Fs, folder, name)
     fig = gcf;
     fig.PaperUnits = 'inches';
     fig.PaperPosition = [0 0 10 6];
-    img_name = strcat(strcat(folder,'\'), strcat('Correlation_',name));
+    img_name = strcat(folder, 'Correlation_', name);
     print ('-dpng', img_name);
     %{
     pause('on');

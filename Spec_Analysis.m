@@ -1,16 +1,16 @@
-function [x,y] = Spec_Analysis(stimulus_file, response_file, folder, name)
+function [x,y] = Spec_Analysis(s,r, name)
 
 fps = 600;
 
-numlines = length(stimulus_file);
+numlines = length(s);
 
-x = csvread(stimulus_file);
+x = detrend(s);
 
-y = csvread(response_file);
+y = detrend(r);
 
-data = iddata(detrend(y), detrend(x), (1/fps));
+data = iddata(y, x, (1/fps));
 
-f = logspace(0,2,100);
+f = logspace(0.1,1,100);
 
 G = spa(data,numlines,f);
 
@@ -21,7 +21,7 @@ showConfidence(h,1)
 fig = gcf;
 fig.PaperUnits = 'inches';
 fig.PaperPosition = [0 0 10 6];
-img_name = strcat(strcat(folder,'\'), name);
+img_name = strcat(file, name);
 print ('-dpng', img_name);
 pause('on');
 pause(1);

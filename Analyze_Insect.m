@@ -1,98 +1,106 @@
-function Analyze_Insect(insect)
-    folder = 'E:\NCBS_Head_Stabilization_Project\Data Analysis\Data\';
-    dirListing = dir(strcat(folder, insect));
-    dirListing(~[dirListing.isdir]) = [];
-    tf = ismember( {dirListing.name}, {'.', '..'});
-    dirListing(tf) = [];  %remove current and parent directory.
-    
-    for i = 1:length(dirListing)
-        if strcmp(dirListing(i).name,'Pre-Anaesthesia')
-            currentdir = strcat(strcat(folder,insect),'\Pre-Anaesthesia');
-            subList_Pre = dir(currentdir);
-            tf = ismember( {subList_Pre.name}, {'.', '..'});
-            subList_Pre(tf) = [];  %remove current and parent directory.
+function Analyze_Insect(data_folder)
+
+    treatment_subdirs = subDirs(data_folder);
+    for i = 1:length(treatment_subdirs)
+        treatment_dir = treatment_subdirs(i).name;
+        motion_type_data_files = dir(strcat(data_folder,'\',...
+                                            treatment_dir,'\*.csv'));
+        for j = 1:length(motion_type_data_files)
             
-            %SINE
-            data_sf = Arrange_Points(subList_Pre(1).name);
-            Plot_SandR(data_sf, currentdir, 'stimulus_s.csv', 'response_s.csv');
-            subList_Pre = dir(currentdir);
-            tf = ismember( {subList_Pre.name}, {'.', '..'});
-            subList_Pre(tf) = [];  %remove current and parent directory.
-            s_index = 0;
-            r_index = 0;
-            for j = 1:length(subList_Pre)
-                if strcmp(subList_Pre(j).name,'stimulus_s.csv')
-                    s_index = j;
-                elseif strcmp(subList_Pre(j).name, 'response_s.csv')
-                    r_index = j;
-                end
-            end
-            fast_FT(subList_Pre(s_index).name, subList_Pre(r_index).name, 600, currentdir, 'sine');
-            %Correlation(subList_Pre(s_index).name,subList_Pre(r_index).name, 600, currentdir, 'sine');
+            motion_type_data_file = motion_type_data_files (j).name;
             
-            %CHIRP
-            data_ch = Arrange_Points(subList_Pre(2).name);
-            Plot_SandR(data_ch, currentdir, 'stimulus_ch.csv', 'response_ch.csv');
-            subList_Pre = dir(currentdir);
-            tf = ismember( {subList_Pre.name}, {'.', '..'});
-            subList_Pre(tf) = [];  %remove current and parent directory.
-            s_index = 0;
-            r_index = 0;
-            for j = 1:length(subList_Pre)
-                if strcmp(subList_Pre(j).name,'stimulus_ch.csv')
-                    s_index = j;
-                elseif strcmp(subList_Pre(j).name, 'response_ch.csv')
-                    r_index = j;
-                end
+            if isempty(strfind(motion_type_data_file,'angle'))
+                
+                current_data_file = strcat(data_folder,'\',...
+                                           treatment_dir,'\',...
+                                           motion_type_data_file);
+                current_data = Arrange_Points(current_data_file);
+                angle_data = calculateAngle(current_data);
+                angle_data_file = strrep(current_data_file,...
+                                         '.csv','-angle.csv');
+                csvwrite(angle_data_file, angle_data);
+                
             end
-            fast_FT(subList_Pre(s_index).name, subList_Pre(r_index).name, 600, currentdir, 'chirp');
-            %Correlation(subList_Pre(s_index).name,subList_Pre(r_index).name, 600, currentdir, 'chirp');
-            %Spec_Analysis(subList_Pre(s_index).name, subList_Pre(r_index).name, currentdir, 'chirp_bode');
-            %delete(strcat(currentdir,'\stimulus_s.csv'), strcat(currentdir,'\response_s.csv'), strcat(currentdir,'\stimulus_ch.csv'), strcat(currentdir,'\response_ch.csv'));
+            
+        end
         
-        elseif strcmp(dirListing(i).name,'Post-Anaesthesia')
-            currentdir = strcat(strcat(folder,insect),'\Post-Anaesthesia');
-            subList_Pre = dir(currentdir);
-            tf = ismember( {subList_Pre.name}, {'.', '..'});
-            subList_Pre(tf) = [];  %remove current and parent directory.
+        motion_type_data_files = dir(strcat(data_folder,'\',...
+                                    treatment_dir,'\*.csv'));
+                                
+        for j = 1:length(motion_type_data_files)
             
-            %SINE
-            data_sf = Arrange_Points(subList_Pre(1).name);
-            Plot_SandR(data_sf, currentdir, 'stimulus_s.csv', 'response_s.csv');
-            subList_Pre = dir(currentdir);
-            tf = ismember( {subList_Pre.name}, {'.', '..'});
-            subList_Pre(tf) = [];  %remove current and parent directory.
-            s_index = 0;
-            r_index = 0;
-            for j = 1:length(subList_Pre)
-                if strcmp(subList_Pre(j).name,'stimulus_s.csv')
-                    s_index = j;
-                elseif strcmp(subList_Pre(j).name, 'response_s.csv')
-                    r_index = j;
+            motion_type_data_file = motion_type_data_files (j).name;
+            
+            if ~isempty(strfind(motion_type_data_file,'angle'))                    
+                if ~isempty(strfind(motion_type_data_file,'Hz'))
+                    [stimulus, response] = ReadCSV(data_folder, treatment_dir, motion_type_data_file)
+                    AnalyzeSineMotion(stimulus, response, strcat(data_folder,'\', treatment_dir, '\'));
+                    delete(strcat(data_folder,'\', treatment_dir, '\',motion_type_data_file));
+                else
+                    [stimulus, response] = ReadCSV(data_folder, treatment_dir, motion_type_data_file)
+                    AnalyzeChirpMotion(stimulus, response, strcat(data_folder,'\', treatment_dir, '\'));
+                    delete(strcat(data_folder,'\', treatment_dir, '\', motion_type_data_file));
                 end
             end
-            fast_FT(subList_Pre(s_index).name, subList_Pre(r_index).name, 600, currentdir, 'sine');
-            %Correlation(subList_Pre(s_index).name,subList_Pre(r_index).name, 600, currentdir, 'sine');
-            
-            %CHIRP
-            data_ch = Arrange_Points(subList_Pre(2).name);
-            Plot_SandR(data_ch, currentdir, 'stimulus_ch.csv', 'response_ch.csv');
-            subList_Pre = dir(currentdir);
-            tf = ismember( {subList_Pre.name}, {'.', '..'});
-            subList_Pre(tf) = [];  %remove current and parent directory.
-            s_index = 0;
-            r_index = 0;
-            for j = 1:length(subList_Pre)
-                if strcmp(subList_Pre(j).name,'stimulus_ch.csv')
-                    s_index = j;
-                elseif strcmp(subList_Pre(j).name, 'response_ch.csv')
-                    r_index = j;
-                end
-            end
-            fast_FT(subList_Pre(s_index).name, subList_Pre(r_index).name, 600, currentdir, 'chirp');
-            %Correlation(subList_Pre(s_index).name,subList_Pre(r_index).name, 600, currentdir, 'chirp');
-            %Spec_Analysis(subList_Pre(s_index).name, subList_Pre(r_index).name, currentdir, 'chirp_bode');
-            %delete(strcat(currentdir,'\stimulus_s.csv'), strcat(currentdir,'\response_s.csv'), strcat(currentdir,'\stimulus_ch.csv'), strcat(currentdir,'\response_ch.csv'));
         end
     end
+    
+end 
+
+function dirListing = subDirs(directory)
+
+    dirListing = dir(directory);
+    dirListing(~[dirListing.isdir]) = []; %remove items which are not directories
+    tf = ismember( {dirListing.name}, {'.', '..'});
+    dirListing(tf) = [];  %remove current and parent directory
+    
 end
+
+function angle_data = calculateAngle(data)
+
+    Head_1 = [data(:, 1) data(:, 2)]; % specifying coordinates
+    Head_2 = [data(:, 3) data(:, 4)];
+    Thorax_1 = [data(:, 5) data(:, 6)];
+    Thorax_2 = [data(:, 7) data(:, 8)];
+    Head = Head_2 - Head_1;  % specifying lines
+    Thorax = Thorax_2 - Thorax_1;
+    theta1 = (atan2(Head(:, 2), Head(:, 1))); % datangle between Head and X-axis
+    theta2 = (atan2(Thorax(:, 2), Thorax(:, 1))); % datangle between Thorax and X-axis
+    thetahead = 180 * (unwrap(theta1)) / pi; % to make angles continous
+    thetathorax = 180 * (unwrap(theta2)) / pi;
+    theta = thetahead - thetathorax; % angle between head and thorax
+    angle_data = [thetahead thetathorax theta];
+    
+end
+
+   
+function AnalyzeSineMotion(s, r, folder)
+    
+    fast_FT(s, r, 600, folder, 'sine');
+    Correlation(s, r, 600, folder, 'sine');
+    
+end
+function AnalyzeChirpMotion(s, r, folder)
+    
+    %fast_FT(s, r, 600, folder, 'chirp');
+    Correlation(s, r, 600, folder, 'chirp');
+    %Spec_Analysis((s, r, 600, 'chirp_bode');
+    
+end
+
+function [stimulus, response] = ReadCSV(data_folder, treatment_dir, motion_type_data_file)
+
+    fileID = fopen(strcat(data_folder,'\',...
+                                           treatment_dir,'\',...
+                                           motion_type_data_file));
+    stimulus = cell2mat(textscan(fileID,'%*s %f %*[^\n]', 'Delimiter' , ','));
+    fclose(fileID);
+    fileID = fopen(strcat(data_folder,'\',...
+                           treatment_dir,'\',...
+                           motion_type_data_file));
+    response = cell2mat(textscan(fileID,'%*s %*s %f', 'Delimiter' , ','));
+    fclose(fileID);
+    
+end
+
+       
