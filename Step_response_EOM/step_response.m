@@ -1,5 +1,5 @@
 function plotScopeTrace
-    filename = 'E:\Master Thesis\Data\Step_Response_EOM\22-02-19\FI OFF, SI 1 MHz, Diff gain 5 Mhz\scope_trace_averaged.csv';
+    filename = 'E:\Master Thesis\Data\Step_Response_EOM\02-25-19\maxpgain2Mhzsigain500KHzdiffgain\scope_trace_average.csv';
     delimiter = ',';
     startRow = 3;
     formatSpec = '%f%f%f%f%[^\n\r]';
