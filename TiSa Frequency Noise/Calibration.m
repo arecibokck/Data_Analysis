@@ -30,7 +30,16 @@ top_of_fringe_time = top_of_fringe_times(find(top_of_fringe_Vs == max(top_of_fri
 
 %Numerical values of required parameters
 fringe_amplitude = (max(V_PD(:)) - min(V_PD(:)))*1E3;
-rise_time = 14.39;
+
+[minValue_t,closestIndex_t] = min(abs(truncated_time - (top_of_fringe_time - (0.5 * mean(diff(top_of_fringe_times))))));
+Index_T = find(truncated_time == top_of_fringe_time);
+t_interval = closestIndex_t:closestIndex_T;
+rising_edge = truncated_V_PD(t_interval);
+[minValue_sof_10,closestIndex_sof_10] = min(abs(rising_edge - (0.1 * top_of_fringe_V)));
+[minValue_sof_80,closestIndex_sof_80] = min(abs(rising_edge - (0.8 * top_of_fringe_V)));
+[minValue_sof_90,closestIndex_sof_90] = min(abs(rising_edge - (0.9 * top_of_fringe_V)));
+rise_time = (truncated_time(t_interval(closestIndex_sof_90)) - truncated_time(t_interval(closestIndex_sof_10)))*1E6;
+
 FSR = 1.5;
 t2t1_interval = mean(diff(top_of_fringe_times)*1E6);
 
@@ -38,6 +47,14 @@ t2t1_interval = mean(diff(top_of_fringe_times)*1E6);
 hold on;
 plot(truncated_time, truncated_scan);
 plot(truncated_time, truncated_V_PD);
+plot(truncated_time(t_interval(closestIndex_sof_80)), rising_edge(closestIndex_sof_80), 'bo');
+text(truncated_time(t_interval(closestIndex_sof_80)) - 8E-5, rising_edge(closestIndex_sof_80), 'Lock Point -------->');
+line([truncated_time(1), truncated_time(end)], [rising_edge(closestIndex_sof_10), rising_edge(closestIndex_sof_10)], 'LineStyle', '--');
+line([truncated_time(1), truncated_time(end)], [rising_edge(closestIndex_sof_90), rising_edge(closestIndex_sof_90)], 'LineStyle', '--');
+line([truncated_time(t_interval(closestIndex_sof_10)), truncated_time(t_interval(closestIndex_sof_10))],...
+    [0, truncated_scan(end)], 'LineStyle', '--');
+line([truncated_time(t_interval(closestIndex_sof_90)), truncated_time(t_interval(closestIndex_sof_90))],...
+    [0, truncated_scan(end)], 'LineStyle', '--');
 text(min(truncated_time)+3E-05, max(truncated_scan)-0.6, ['U_{peak} = ' num2str(fringe_amplitude) ' mV']);
 text(min(truncated_time)+3E-05, max(truncated_scan)-0.8, ['T_{rise} = ' num2str(rise_time) ' us']);
 text(min(truncated_time)+3E-05, max(truncated_scan)-1.0, ['FSR = ' num2str(FSR) ' Ghz']);
