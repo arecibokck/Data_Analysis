@@ -11,7 +11,7 @@ classdef ImageCorrection < handle
         AverageImages
         AverageBackgroundImage
         AverageBackGroundImageFull
-        FourierFilteringType
+        UseFFT
     end
     
     methods % Lifecycle functions
@@ -31,7 +31,7 @@ classdef ImageCorrection < handle
             this.measObj = getfield(imagefile, fname{1});
             [this.AverageImages, this.AverageBackgroundImage, this.AverageBackGroundImageFull] = this.measObj.getAverageImages;
         end
-        function ret = applyBuiltInFFTFilter(~, image)
+        function [fLog, filter, filteredImage] = applyFFTFilter(~, image)
             % normalize the image and conver to doubleI
             image = double(mat2gray(image));
 
@@ -49,28 +49,38 @@ classdef ImageCorrection < handle
 
             % filter by a range based on fLog
 
-            filter = (fLog < .5*max(fLog(:)) ) | (fLog > 0.88*max(fLog(:)) );
+            filter = (fLog < .45*max(fLog(:)) ) | (fLog > 0.88*max(fLog(:)) );
 
-            ret = abs(ifft2(f.*filter));
-
-            figure(1)
-            colormap(gray)
-            subplot(2,2,1),imagesc(image); title('Original Image')
-            colorbar
-            subplot(2,2,2),imagesc(fLog); title('Fourier Image')
-            colorbar
-            subplot(2,2,3),imagesc(filter); title('Mask')
-            colorbar
-            subplot(2,2,4),imagesc(ret); title('Corrected Image')
-            colorbar
-            annotation('textbox', [0 0.9 1 0.1], ...
-                'String', 'Correction for Etaloning', ...
-                'EdgeColor', 'none', ...
-                'HorizontalAlignment', 'center', ...
-                'FontSize', 15, ...
-                'FontWeight', 'bold')
-
+            filteredImage = abs(ifft2(f.*filter));
             
+        end
+        function [fLog, filter, filteredImage] = applyDFTFilter(~, image)
+            % normalize the image and conver to doubleI
+            image = double(mat2gray(image));
+            
+            % Resize the image
+            % image = imresize(image, [256 256]);
+            
+            % generate Vandermonde DFT matrix
+            M = size(image,1);
+            N = size(image,2);
+            w_m = exp(-1i*2*pi/M);
+            w_n = exp(-1i*2*pi/N);
+            [k,m] = meshgrid(1:M,1:N);
+            [l,n] = meshgrid(1:N,1:N);
+            DFT = ((M*N)^(-1)) * (w_m .^((k-1).*(m-1))) .* (w_n.^((l-1).*(n-1)));
+            
+            % apply DFT
+            f = DFT .* image;
+            
+            % used to plot the image
+            fLog = log(abs(f));
+            
+            % filter by a range based on fLog
+
+            filter = (fLog < .5*max(fLog(:)) ) | (fLog > 0.9*max(fLog(:)) );
+            
+            filteredImage = abs(conj(DFT) .* (f.*filter));
         end
         function ret = applyintensityGradientCorrection(~, image)
             x = [size(image,2)/2 size(image,2)];
@@ -114,53 +124,28 @@ classdef ImageCorrection < handle
                 end
             end
         end
-        function correctEtaloning(this, filename, varargin)
+        function [image, fLog, filter, filteredImage] = applyFourierMask(this, filename, varargin)
             
             input = inputParser;
             addRequired(input,'filename',@ischar);
-            addParameter(input,'ImageToCorrect','Bkg',@ischar);
-            addParameter(input,'FourierFilteringType','BuiltIn',@ischar);
+            addParameter(input,'UseFFT', true,@islogical);
             parse(input, filename, varargin{:});
             
             this.filename = input.Results.filename;
-            this.ImageToCorrect = input.Results.ImageToCorrect;
-            this.FourierFilteringType = input.Results.FourierFilteringType;
+            this.UseFFT = input.Results.UseFFT;
             
             if ~this.imagesLoaded
                 this.loadImages;
                 this.imagesLoaded = true;
             end
             
-            switch this.ImageToCorrect
-                case 'Bkg'
-                    image = squeeze(squeeze(this.AverageBackgroundImage));
-            end
+            image = squeeze(squeeze(this.AverageBackgroundImage));
             
-            switch this.FourierFilteringType 
-                case 'BuiltIn'
-                    filteredImage = this.applyBuiltInFFTFilter(image);
-                case 'Manual'
-                    filteredImage = this.applyManualFFTFilter(image);
+            if this.UseFFT
+                [fLog, filter, filteredImage] = this.applyFFTFilter(image);
+            else    
+                [fLog, filter, filteredImage] = this.applyDFTFilter(image);
             end
-            
-            FirstImage = squeeze(squeeze(this.AverageImages(1,1,:,:)));
-            figure
-            subplot(2,2,1)
-            s1 = surf(FirstImage,'FaceAlpha',0.5);
-            title('Original Image')
-            s1.EdgeColor = 'none';
-            subplot(2,2,2)
-            s2 = surf(FirstImage.*filteredImage,'FaceAlpha',0.5);
-            title('Corrected Image')
-            s2.EdgeColor = 'none';
-            subplot(2,2,3)
-            s3 = surf(FirstImage,'FaceAlpha',0.5);
-            s3.EdgeColor = 'none';
-            view([0 0])
-            subplot(2,2,4)
-            s4 = surf(FirstImage.*filteredImage,'FaceAlpha',0.5);
-            s4.EdgeColor = 'none';
-            view([0 0])
         end
     end
     
