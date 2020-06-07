@@ -1,14 +1,39 @@
 %%
 clc
 corrector = ImageCorrection.getInstance();
-corrector.correctEtaloning('2020-06-04T005311_seq_scanRamseyFringeForHDT2TrapDepthMeasurement.mat', 'UseFFT', true);
 
+FourierMask = corrector.correctEtaloning('2020-06-04T005311_seq_scanRamseyFringeForHDT2TrapDepthMeasurement.mat', ...
+                                         'UseFFT', true, ...
+                                         'NotchFilterInnerRadius', 0, ...
+                                         'NotchFilterOuterRadius', 100,...
+                                         'GaussianFilterSigma', 25, ...
+                                         'SubtractDCOffset', true, ... 
+                                         'DCOffset', 10, ...
+                                         'SaveMask', true, ...
+                                         'CorrectAll', false);
+                                         
+% [correctedImages, FourierMask] = corrector.correctEtaloning('CombinedMeasurement.mat', ...
+%                                                             'UseFFT', true, ...
+%                                                             'NotchFilterInnerRadius', 30, ...
+%                                                             'NotchFilterOuterRadius', 100,...
+%                                                             'GaussianFilterSigma', 20, ...
+%                                                             'SubtractDCOffset', true, ... 
+%                                                             'DCOffset', 10, ...
+%                                                             'SaveMask', true, ...
+%                                                             'CorrectAll', true);
+%%
+corrector.saveFourierMask(FourierMask, 'EtaloningMask')
+%%
+EtaloningMask = corrector.loadFourierMask('EtaloningMask_2020-06-03.mat');
+% EtaloningMask = corrector.loadFourierMask('EtaloningMask_2020-05-19.mat');
 %%
 
 % -calculations
-ReadoutNoise = 70;
+corrector.DCOffset = 10; %ReadoutNoise 
+corrector.NotchFilter.InnerRadius = 20;
+corrector.NotchFilter.OuterRadius = 100;
+corrector.GaussianFilterSigma = 20;
 imageData = squeeze(squeeze(corrector.AverageBackgroundImage));
-imageData = imageData-ones(size(imageData))*ReadoutNoise;
 [fLog, filter, EtaloningMask] = corrector.createFourierMask(imageData);
 
 % - plotting
@@ -16,11 +41,14 @@ figure(1)
 clf
 colormap(parula)
 [xvals,yvals,X,Y,RSquared] = FluoImageAnalysis.ImageAnalysis.getPosition(fLog,'Units','um');
+fxvals = [-size(imageData,1)-1:size(imageData,1)-1] .* (1 / (2*size(imageData,1)));
+fyvals = [-size(imageData,2)-1:size(imageData,2)-1] .* (1 / (2*size(imageData,2)));
+
 subplot(2,3,1),imagesc(xvals,yvals,imageData); title('Original Image')
 colorbar
-subplot(2,3,2),imagesc(xvals,yvals,fLog); title('Fourier Image')
+subplot(2,3,2),imagesc(fxvals,fyvals,fLog); title('Fourier Image')
 colorbar
-subplot(2,3,3),imagesc(xvals,yvals,filter); title('Fourier mask')
+subplot(2,3,3),imagesc(fxvals,fyvals,filter); title('Filter')
 colorbar
 subplot(2,3,4),imagesc(xvals,yvals,EtaloningMask); title('Etaloning mask')
 %caxis([0.4 1.6])
@@ -35,9 +63,10 @@ sgtitle('Correction for Etaloning','FontSize', 15)
             
 %%
 % -calculations
-AverageFirstImage = squeeze(mean(squeeze(corrector.AverageImages(:,1,:,:))))-ones(size(imageData))*ReadoutNoise;
-RescaleFactor = 1; % Factor of 5 gives a very smooth 
-EtaloningMask = (EtaloningMask-1)*RescaleFactor+1;
+AverageFirstImage = squeeze(mean(squeeze(corrector.AverageImages(:,1,:,:))))-ones(size(imageData))*corrector.DCOffset;
+% AverageFirstImage = squeeze(mean(squeeze(corrector.AverageImages(:,:,:))))-ones(size(imageData))*corrector.DCOffset;
+%RescaleFactor = 1; % Factor of 5 gives a very smooth 
+%EtaloningMask = (EtaloningMask-1)*RescaleFactor+1;
 CorrectedImage = AverageFirstImage./EtaloningMask;
 
 % - plotting
