@@ -12,6 +12,7 @@ classdef ImageCorrection < handle
         AverageImages
         AverageBackgroundImage
         AverageBackGroundImageFull
+        CorrectIntensityGradient
         UseFFT
         UseGaussianFilter
         UseButterworthFilter
@@ -40,9 +41,15 @@ classdef ImageCorrection < handle
             [this.AverageImages, this.AverageBackgroundImage, this.AverageBackGroundImageFull] = this.measObj.getAverageImages;
         end
         function [fLog, filter, FourierMask] = createFourierMask(this, image)
-            image = image-this.applyintensityGradientCorrection(image);
+            if this.CorrectIntensityGradient
+                image = image-this.applyintensityGradientCorrection(image);
+            end
             if this.SubtractDCOffset
-                image = image-ones(size(image))*this.DCOffset;
+                if ~ismatrix(this.DCOffset)
+                    image = image-ones(size(image))*this.DCOffset;
+                else
+                    image = image-this.DCOffset;
+                end
             end
             if this.UseFFT
                 f = fftshift(fft2(image));
@@ -105,9 +112,10 @@ classdef ImageCorrection < handle
         function varargout = correctEtaloning(this, filename, varargin)
             input = inputParser;
             addRequired(input,'filename',@ischar);
+            addParameter(input,'CorrectIntensityGradient', true,@islogical);
             addParameter(input,'UseFFT', true,@islogical);
-            addParameter(input,'UseGaussianFilter', false,@islogical);
-            addParameter(input,'UseButterworthFilter', true,@islogical);
+            addParameter(input,'UseGaussianFilter', true,@islogical);
+            addParameter(input,'UseButterworthFilter', false,@islogical);
             addParameter(input,'FilterInnerRadius', this.Filter.InnerRadius,@isnumeric);
             addParameter(input,'FilterOuterRadius', this.Filter.OuterRadius,@isnumeric);
             addParameter(input,'GaussianFilterSigma', this.GaussianFilterSigma,@isnumeric);
@@ -118,6 +126,7 @@ classdef ImageCorrection < handle
             addParameter(input,'CorrectAll', false,@islogical);
             parse(input, filename, varargin{:});
             this.filename = input.Results.filename;
+            this.CorrectIntensityGradient = input.Results.CorrectIntensityGradient;
             this.UseFFT = input.Results.UseFFT;
             this.UseGaussianFilter = input.Results.UseGaussianFilter;
             this.UseButterworthFilter = input.Results.UseButterworthFilter;
@@ -236,6 +245,7 @@ classdef ImageCorrection < handle
             %surf(x, y, image, 'EdgeColor', 'none'); % original wavy data
             %hold all;
             ret = reshape(X*M, m, n);
+            %ret = ret/mean(ret(:)); % -subtract offset
             %surf(x, y, reshape(X*M, m, n), 'EdgeColor', 'none', 'FaceColor', 'b'); % blue fitted-plane
         end
         function ret = TwoDimensionalButterworthFilter(RSquared, low, high, n)

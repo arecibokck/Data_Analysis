@@ -1,6 +1,127 @@
 %%
 clc
 corrector = ImageCorrection.getInstance();
+                                         
+[correctedImages, FourierMask] = corrector.correctEtaloning('CombinedMeasurement.mat', ...
+                                                            'CorrectIntensityGradient', true, ...
+                                                            'UseFFT', true, ...
+                                                            'UseGaussian', true, ...      %UseButterworth', true
+                                                            'FilterInnerRadius', 20, ...
+                                                            'FilterOuterRadius', 100,...
+                                                            'GaussianFilterSigma', 20, ... %'ButterworthFilterOrder', 6, ...
+                                                            'SubtractDCOffset', true, ... 
+                                                            'DCOffset', 70, ...
+                                                            'SaveMask', true, ...
+                                                            'CorrectAll', true);
+                                                        
+% - WITH NO INTENSITY GRADIENT CORRECTION & GAUSSIAN FILTER
+clc
+corrector.CorrectIntensityGradient = false;
+corrector.DCOffset = 110;
+corrector.UseGaussianFilter = true; 
+corrector.Filter.InnerRadius = 10;
+corrector.Filter.OuterRadius = 50;
+corrector.GaussianFilterSigma = 10;
+imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
+[fLog, filter, EtaloningMask] = corrector.createFourierMask(imageData);
+%%
+
+% - WITH NO INTENSITY GRADIENT CORRECTION, MEASURED DCOFFSET MATRIX & GAUSSIAN FILTER
+clc
+corrector.CorrectIntensityGradient = false;
+Temp_file = matfile([corrector.pathToFile filesep 'DCOffset.mat']);
+corrector.DCOffset = Temp_file.imageData; %ReadoutNoise 
+corrector.UseGaussianFilter = true; 
+corrector.Filter.InnerRadius = 10;
+corrector.Filter.OuterRadius = 50;
+corrector.GaussianFilterSigma = 10;
+imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
+[fLog, filter, EtaloningMask] = corrector.createFourierMask(imageData);
+%%
+
+% - WITH INTENSITY GRADIENT CORRECTION & GAUSSIAN FILTER
+clc
+corrector.CorrectIntensityGradient = true;
+corrector.DCOffset = 110;
+corrector.UseGaussianFilter = false; 
+corrector.UseButterworthFilter = true;
+corrector.Filter.InnerRadius = 10;
+corrector.Filter.OuterRadius = 50;
+corrector.ButterworthFilterOrder = 6;
+imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
+[fLog, filter, EtaloningMask] = corrector.createFourierMask(imageData);
+
+%%
+
+% - WITH INTENSITY GRADIENT CORRECTION, MEASURED DCOFFSET MATRIX & GAUSSIAN FILTER
+clc
+corrector.CorrectIntensityGradient = true;
+Temp_file = matfile([corrector.pathToFile filesep 'DCOffset.mat']);
+corrector.DCOffset = Temp_file.imageData; %ReadoutNoise 
+corrector.UseGaussianFilter = true; 
+corrector.Filter.InnerRadius = 10;
+corrector.Filter.OuterRadius = 50;
+corrector.GaussianFilterSigma = 10;
+imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
+[fLog, filter, EtaloningMask] = corrector.createFourierMask(imageData);
+
+%%
+
+% -WITH NO INTENSITY GRADIENT CORRECTION & BUTTERWORTH FILTER
+clc
+corrector.CorrectIntensityGradient = false;
+corrector.DCOffset = 110; %ReadoutNoise 
+corrector.UseGaussianFilter = false; 
+corrector.UseButterworthFilter = true;
+corrector.Filter.InnerRadius = 10;
+corrector.Filter.OuterRadius = 50;
+corrector.ButterworthFilterOrder = 6;
+imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
+[fLog, filter, EtaloningMask] = corrector.createFourierMask(imageData);
+
+%%
+% -WITH NO INTENSITY GRADIENT CORRECTION, MEASURED DCOFFSET MATRIX & BUTTERWORTH FILTER
+clc
+corrector.CorrectIntensityGradient = false;
+Temp_file = matfile([corrector.pathToFile filesep 'DCOffset.mat']);
+corrector.DCOffset = Temp_file.imageData; %ReadoutNoise 
+corrector.UseGaussianFilter = false; 
+corrector.UseButterworthFilter = true;
+corrector.Filter.InnerRadius = 10;
+corrector.Filter.OuterRadius = 50;
+corrector.ButterworthFilterOrder = 6;
+imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
+[fLog, filter, EtaloningMask] = corrector.createFourierMask(imageData);
+
+%%
+% -WITH INTENSITY GRADIENT CORRECTION & BUTTERWORTH FILTER
+clc
+corrector.CorrectIntensityGradient = true;
+corrector.DCOffset = 110; %ReadoutNoise 
+corrector.UseGaussianFilter = false; 
+corrector.UseButterworthFilter = true;
+corrector.Filter.InnerRadius = 10;
+corrector.Filter.OuterRadius = 50;
+corrector.ButterworthFilterOrder = 6;
+imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
+[fLog, filter, EtaloningMask] = corrector.createFourierMask(imageData);
+
+%%
+%%
+% -WITH INTENSITY GRADIENT CORRECTION, MEASURED DCOFFSET MATRIX & BUTTERWORTH FILTER
+clc
+corrector.CorrectIntensityGradient = true;
+Temp_file = matfile([corrector.pathToFile filesep 'DCOffset.mat']);
+corrector.DCOffset = Temp_file.imageData; %ReadoutNoise 
+corrector.UseGaussianFilter = false; 
+corrector.UseButterworthFilter = true;
+corrector.Filter.InnerRadius = 10;
+corrector.Filter.OuterRadius = 50;
+corrector.ButterworthFilterOrder = 6;
+imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
+[fLog, filter, EtaloningMask] = corrector.createFourierMask(imageData);
+
+%%                                                        
 
 % FourierMask = corrector.correctEtaloning('2020-06-04T005311_seq_scanRamseyFringeForHDT2TrapDepthMeasurement.mat', ...
 %                                          'UseFFT', true, ...
@@ -12,35 +133,24 @@ corrector = ImageCorrection.getInstance();
 %                                          'DCOffset', 10, ...
 %                                          'SaveMask', true, ...
 %                                          'CorrectAll', false);
-                                         
-[correctedImages, FourierMask] = corrector.correctEtaloning('CombinedMeasurement.mat', ...
-                                                            'UseFFT', true, ...
-                                                            'UseGaussian', true, ...      %UseButterworth', true
-                                                            'FilterInnerRadius', 20, ...
-                                                            'FilterOuterRadius', 100,...
-                                                            'GaussianFilterSigma', 20, ... %'ButterworthFilterOrder', 6, ...
-                                                            'SubtractDCOffset', true, ... 
-                                                            'DCOffset', 70, ...
-                                                            'SaveMask', true, ...
-                                                            'CorrectAll', true);
+
+% FourierMask = corrector.correctEtaloning('2020-06-08T175236_seq_scanTest3DCooling.mat', ...
+%                                          'UseFFT', true, ...
+%                                          'UseGaussian', true, ...      %UseButterworth', true
+%                                          'FilterInnerRadius', 20, ...
+%                                          'FilterOuterRadius', 100,...
+%                                          'GaussianFilterSigma', 20, ... %'ButterworthFilterOrder', 6, ...
+%                                          'SubtractDCOffset', true, ... 
+%                                          'DCOffset', 70, ...
+%                                          'SaveMask', false, ...
+%                                          'CorrectAll', false);
+
 %%
 corrector.saveFourierMask(FourierMask, 'EtaloningMask')
 %%
 EtaloningMask = corrector.loadFourierMask('EtaloningMask_2020-06-03.mat');
 % EtaloningMask = corrector.loadFourierMask('EtaloningMask_2020-05-19.mat');
 %%
-
-% -calculations
-corrector.DCOffset = 110; %ReadoutNoise 
-corrector.UseGaussianFilter = true;
-% corrector.UseButterworthFilter = true;
-corrector.Filter.InnerRadius = 10;
-corrector.Filter.OuterRadius = 50;
-corrector.GaussianFilterSigma = 10;
-% corrector.ButterworthFilterOrder = 6;
-imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
-[fLog, filter, EtaloningMask] = corrector.createFourierMask(imageData);
-
 % - plotting
 figure(1)
 clf
@@ -68,10 +178,11 @@ set(gca, 'XScale', 'log')
 grid on, grid minor;
 sgtitle('Correction for Etaloning','FontSize', 15)
             
-%%
+
 % -calculation
 % AverageFirstImage = squeeze(mean(squeeze(corrector.AverageImages(:,1,:,:))))-ones(size(imageData))*corrector.DCOffset;
-AverageFirstImage = squeeze(mean(squeeze(corrector.AverageImages(:,:,:))))/9-ones(size(imageData))*corrector.DCOffset;
+% AverageFirstImage = squeeze(mean(squeeze(corrector.AverageImages(:,:,:))))/9-ones(size(imageData))*corrector.DCOffset;
+AverageFirstImage = squeeze(mean(squeeze(corrector.AverageImages(:,:,:))))/9-corrector.DCOffset;
 %RescaleFactor = 1; % Factor of 5 gives a very smooth 
 %EtaloningMask = (EtaloningMask-1)*RescaleFactor+1;
 CorrectedImage = AverageFirstImage.*EtaloningMask;
