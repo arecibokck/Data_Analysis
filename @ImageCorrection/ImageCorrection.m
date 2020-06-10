@@ -12,6 +12,7 @@ classdef ImageCorrection < handle
         AverageImages
         AverageBackgroundImage
         AverageBackGroundImageFull
+        UseImage = 3;
         CorrectIntensityGradient
         UseFFT
         UseGaussianFilter
@@ -19,31 +20,33 @@ classdef ImageCorrection < handle
         SubtractDCOffset
         SaveMask
         CorrectAll
-        DCOffset = 10;
-        Filter = struct('InnerRadius', 20, ...
-                             'OuterRadius', 100);
-        GaussianFilterSigma = 20;
-        ButterworthFilterOrder = 6;
+        DCOffset = 15;
+        Filter = struct('InnerRadius', 0.4, ...
+                        'OuterRadius', 10);
+        GaussianFilterSigma = 5;
+        ButterworthFilterOrder = 3;
     end
     
     methods % Lifecycle functions
         function this = ImageCorrection()
             scriptpath = matlab.desktop.editor.getActiveFilename;
-            this.pathToFile = scriptpath(1:strfind(scriptpath, [filesep '@' class(this)])-1);
+            AllOccurences = strfind(scriptpath, filesep);
+            this.pathToFile = scriptpath(1:AllOccurences(end)-1);
         end
     end
     
     methods % Action handlers
-        function loadImages(this)
+        function loadImages(this, varargin)
+            if nargin == 2
+                this.filename = varargin{1};
+            end
             imagefile = load([this.pathToFile filesep this.filename]);
             fname = fieldnames(imagefile);
             this.measObj = getfield(imagefile, fname{1});
             [this.AverageImages, this.AverageBackgroundImage, this.AverageBackGroundImageFull] = this.measObj.getAverageImages;
+            this.areImagesLoaded = true;
         end
         function [fLog, filter, FourierMask] = createFourierMask(this, image)
-            if this.CorrectIntensityGradient
-                image = image-this.applyintensityGradientCorrection(image);
-            end
             if this.SubtractDCOffset
                 if ~ismatrix(this.DCOffset)
                     image = image-ones(size(image))*this.DCOffset;
@@ -51,6 +54,12 @@ classdef ImageCorrection < handle
                     image = image-this.DCOffset;
                 end
             end
+            
+            if this.CorrectIntensityGradient
+                image = image-this.applyintensityGradientCorrection(image);
+                image(image<0) = 0;
+            end
+            
             if this.UseFFT
                 f = fftshift(fft2(image));
                 fLog = log(abs(f));
@@ -109,9 +118,10 @@ classdef ImageCorrection < handle
             Temp_file = matfile([load_path filesep load_file]);
             ret = Temp_file.FourierMask;
         end
-        function varargout = correctEtaloning(this, filename, varargin)
+        function varargout = generateMask(this, filename, varargin)
             input = inputParser;
-            addRequired(input,'filename',@ischar);
+            addRequired(input ,'filename',@ischar);
+            addParameter(input,'UseImage', this.UseImage,@isnumeric);
             addParameter(input,'CorrectIntensityGradient', true,@islogical);
             addParameter(input,'UseFFT', true,@islogical);
             addParameter(input,'UseGaussianFilter', true,@islogical);
@@ -123,7 +133,6 @@ classdef ImageCorrection < handle
             addParameter(input,'SubtractDCOffset', true,@islogical);
             addParameter(input,'DCOffset', this.DCOffset,@isnumeric);
             addParameter(input,'SaveMask', true,@islogical);
-            addParameter(input,'CorrectAll', false,@islogical);
             parse(input, filename, varargin{:});
             this.filename = input.Results.filename;
             this.CorrectIntensityGradient = input.Results.CorrectIntensityGradient;
@@ -137,41 +146,35 @@ classdef ImageCorrection < handle
             this.SubtractDCOffset = input.Results.SubtractDCOffset;
             this.DCOffset = input.Results.DCOffset;
             this.SaveMask = input.Results.SaveMask;
-            this.CorrectAll = input.Results.CorrectAll;
             if ~this.areImagesLoaded
                 this.loadImages;
-                this.areImagesLoaded = true;
             end
             if ~isempty(this.prev_filename) && ~strcmp(this.prev_filename, this.filename)
                 this.loadImages;
-                this.areImagesLoaded = true;
             end
             
-            BkgImage = squeeze(squeeze(this.AverageBackgroundImage));
+            AvgFirst = squeeze(this.AverageImages(1,:,:));
+            AvgSecond = squeeze(this.AverageImages(2,:,:));
+            AvgBkg = squeeze(squeeze(this.AverageBackgroundImage));
+            AvgAll = (AvgFirst + AvgSecond + AvgBkg)/3;
             
-            [~, ~, FourierMask] = this.createFourierMask(BkgImage);
+            switch this.UseImage
+                case 4
+                    [fLog, filter, FourierMask] = this.createFourierMask(AvgAll);
+                case 3
+                    [fLog, filter, FourierMask] = this.createFourierMask(AvgBkg);
+                case 2
+                    [fLog, filter, FourierMask] = this.createFourierMask(AvgSecond);
+                case 1
+                    [fLog, filter, FourierMask] = this.createFourierMask(AvgFirst);
+            end    
             
-            if this.CorrectAll
-                if nargout <= 2
-                    FirstImages = squeeze(squeeze(this.measObj.runData.images(:,1,:,:)));
-                    SecondImages = squeeze(squeeze(this.measObj.runData.images(:,2,:,:)));
-                    BackgroundImages = squeeze(squeeze(this.measObj.runData.images(:,3,:,:)));
-                    for Index = 1:this.measObj.runData.currentRunIndex
-                        FirstImages(Index, :, :) = squeeze(FirstImages(Index, :, :)) ./ FourierMask;
-                        SecondImages(Index, :, :) = squeeze(SecondImages(Index, :, :)) ./ FourierMask;
-                        BackgroundImages(Index, :, :) = squeeze(BackgroundImages(Index, :, :)) ./ FourierMask;
-                    end
-                    varargout{1} = struct('CorrectedFirstImages',  FirstImages, ...
-                                          'CorrectedSecondImages', SecondImages, ...
-                                          'CorrectedBkgImages',  BackgroundImages);
-                end
-                
-                if nargout == 2 
-                    varargout{2} = FourierMask;
-                end
-                
-            elseif nargout == 1     
-                varargout{1} = FourierMask;
+            if nargout == 3     
+                varargout{1} = fLog;
+                varargout{2} = filter;
+                varargout{3} = FourierMask;
+            else
+                warning('No output generated!');
             end
             
             if this.SaveMask

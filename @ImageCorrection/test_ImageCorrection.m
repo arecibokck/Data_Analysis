@@ -2,7 +2,7 @@
 clc
 corrector = ImageCorrection.getInstance();
                                          
-[correctedImages, FourierMask] = corrector.correctEtaloning('CombinedMeasurement.mat', ...
+[correctedImages, FourierMask] = corrector.generateMask('CombinedMeasurement.mat', ...
                                                             'CorrectIntensityGradient', true, ...
                                                             'UseFFT', true, ...
                                                             'UseGaussian', true, ...      %UseButterworth', true
@@ -30,13 +30,15 @@ imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
 clc
 corrector.CorrectIntensityGradient = false;
 Temp_file = matfile([corrector.pathToFile filesep 'DCOffset.mat']);
-corrector.DCOffset = Temp_file.imageData; %ReadoutNoise 
+corrector.DCOffset = Temp_file.ImageData; %ReadoutNoise 
 corrector.UseGaussianFilter = true; 
-corrector.Filter.InnerRadius = 10;
-corrector.Filter.OuterRadius = 50;
-corrector.GaussianFilterSigma = 10;
+corrector.Filter.InnerRadius = 31; %31
+corrector.Filter.OuterRadius = 35;  %35
+corrector.GaussianFilterSigma = 25;  %25
 imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
 [fLog, filter, EtaloningMask] = corrector.createFourierMask(imageData);
+
+
 %%
 
 % - WITH INTENSITY GRADIENT CORRECTION & GAUSSIAN FILTER
@@ -52,16 +54,15 @@ imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
 [fLog, filter, EtaloningMask] = corrector.createFourierMask(imageData);
 
 %%
-
 % - WITH INTENSITY GRADIENT CORRECTION, MEASURED DCOFFSET MATRIX & GAUSSIAN FILTER
 clc
 corrector.CorrectIntensityGradient = true;
 Temp_file = matfile([corrector.pathToFile filesep 'DCOffset.mat']);
-corrector.DCOffset = Temp_file.imageData; %ReadoutNoise 
+corrector.DCOffset = Temp_file.ImageData; %ReadoutNoise 
 corrector.UseGaussianFilter = true; 
 corrector.Filter.InnerRadius = 10;
-corrector.Filter.OuterRadius = 50;
-corrector.GaussianFilterSigma = 10;
+corrector.Filter.OuterRadius = 40;
+corrector.GaussianFilterSigma = 15; 
 imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
 [fLog, filter, EtaloningMask] = corrector.createFourierMask(imageData);
 
@@ -84,7 +85,7 @@ imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
 clc
 corrector.CorrectIntensityGradient = false;
 Temp_file = matfile([corrector.pathToFile filesep 'DCOffset.mat']);
-corrector.DCOffset = Temp_file.imageData; %ReadoutNoise 
+corrector.DCOffset = Temp_file.ImageData; %ReadoutNoise 
 corrector.UseGaussianFilter = false; 
 corrector.UseButterworthFilter = true;
 corrector.Filter.InnerRadius = 10;
@@ -106,24 +107,24 @@ corrector.ButterworthFilterOrder = 6;
 imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
 [fLog, filter, EtaloningMask] = corrector.createFourierMask(imageData);
 
-%%
+
 %%
 % -WITH INTENSITY GRADIENT CORRECTION, MEASURED DCOFFSET MATRIX & BUTTERWORTH FILTER
 clc
 corrector.CorrectIntensityGradient = true;
 Temp_file = matfile([corrector.pathToFile filesep 'DCOffset.mat']);
-corrector.DCOffset = Temp_file.imageData; %ReadoutNoise 
+corrector.DCOffset = Temp_file.ImageData; %ReadoutNoise 
 corrector.UseGaussianFilter = false; 
 corrector.UseButterworthFilter = true;
-corrector.Filter.InnerRadius = 10;
-corrector.Filter.OuterRadius = 50;
+corrector.Filter.InnerRadius = 1.5;
+corrector.Filter.OuterRadius = 8;
 corrector.ButterworthFilterOrder = 6;
 imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
 [fLog, filter, EtaloningMask] = corrector.createFourierMask(imageData);
 
 %%                                                        
 
-% FourierMask = corrector.correctEtaloning('2020-06-04T005311_seq_scanRamseyFringeForHDT2TrapDepthMeasurement.mat', ...
+% FourierMask = corrector.generateMask('2020-06-04T005311_seq_scanRamseyFringeForHDT2TrapDepthMeasurement.mat', ...
 %                                          'UseFFT', true, ...
 %                                          'UseGaussian', true, ...                
 %                                          'FilterInnerRadius', 0, ...
@@ -134,7 +135,7 @@ imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
 %                                          'SaveMask', true, ...
 %                                          'CorrectAll', false);
 
-% FourierMask = corrector.correctEtaloning('2020-06-08T175236_seq_scanTest3DCooling.mat', ...
+% FourierMask = corrector.generateMask('2020-06-08T175236_seq_scanTest3DCooling.mat', ...
 %                                          'UseFFT', true, ...
 %                                          'UseGaussian', true, ...      %UseButterworth', true
 %                                          'FilterInnerRadius', 20, ...
@@ -151,10 +152,24 @@ corrector.saveFourierMask(FourierMask, 'EtaloningMask')
 EtaloningMask = corrector.loadFourierMask('EtaloningMask_2020-06-03.mat');
 % EtaloningMask = corrector.loadFourierMask('EtaloningMask_2020-05-19.mat');
 %%
+% clc
+% corrector.CorrectIntensityGradient = false;
+% Temp_file = matfile([corrector.pathToFile filesep 'DCOffset.mat']);
+% corrector.DCOffset = Temp_file.ImageData; %ReadoutNoise 
+% corrector.UseGaussianFilter = true; 
+% corrector.UseButterworthFilter = false;
+% corrector.Filter.InnerRadius = 70;
+% corrector.Filter.OuterRadius = 90.5;
+% corrector.ButterworthFilterOrder = 6;
+% corrector.GaussianFilterSigma = 15;
+% 
+% imageData = squeeze(squeeze(corrector.AverageBackgroundImage))/9;
+% [fLog, filter, EtaloningMask] = corrector.createFourierMask(imageData);
+
 % - plotting
 figure(1)
 clf
-colormap(parula)
+colormap(jet)
 [xvals,yvals,X,Y,RSquared] = FluoImageAnalysis.ImageAnalysis.getPosition(fLog,'Units','um');
 fxvals = [-size(imageData,1)-1:size(imageData,1)-1] .* (1 / (2*size(imageData,1)));
 fyvals = [-size(imageData,2)-1:size(imageData,2)-1] .* (1 / (2*size(imageData,2)));
@@ -177,8 +192,7 @@ set(gca, 'YScale', 'log')
 set(gca, 'XScale', 'log')
 grid on, grid minor;
 sgtitle('Correction for Etaloning','FontSize', 15)
-            
-
+%%
 % -calculation
 % AverageFirstImage = squeeze(mean(squeeze(corrector.AverageImages(:,1,:,:))))-ones(size(imageData))*corrector.DCOffset;
 % AverageFirstImage = squeeze(mean(squeeze(corrector.AverageImages(:,:,:))))/9-ones(size(imageData))*corrector.DCOffset;
@@ -226,6 +240,6 @@ for kk =1:3
     colormap jet
     colorbar
     if kk>1
-    caxis([0 1200])
+    %caxis([0 1200])
     end
 end
