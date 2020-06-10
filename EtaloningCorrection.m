@@ -1,6 +1,6 @@
 %%
 clc
-DoReload = false;
+DoReload = true;
 if DoReload
     corrector = ImageCorrection.getInstance();
     
@@ -35,7 +35,7 @@ if DoReload
 end
 
 TypeOfFilter = 'Butterworth';
-ImageTemplateToUse = 3; % 1: Avg First Image; 2: Avg Second Image; 3: Avg Bkg Image; 1: Avg All Image
+ImageTemplateToUse = 4; % 1: Avg First Image; 2: Avg Second Image; 3: Avg Bkg Image; 1: Avg All Image
 RescaleColorAxis = false;
 CustomColorScale = [80,320];
 FinalFilterSize = 10;
