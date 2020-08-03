@@ -1,6 +1,6 @@
 load('Trajectories.mat')
 NumberOfAtoms = size(Xres, 2);
-initialPositions = Xres(1,1:19);
+initialPositions = Xres(1,1:size(Xres, 2));
 colours = {[0, 0.4470, 0.7410],[0.8500, 0.3250, 0.0980],[0.9290, 0.6940, 0.1250],[0.4940, 0.1840, 0.5560],[0.4660, 0.6740, 0.1880], [0.6350, 0.0780, 0.1840]};
 
 %% - Plotting
@@ -15,11 +15,11 @@ for Index = 1:NumberOfAtoms
     ZC = ZeroX(tspan*1e3,Xres(:,Index).*1e6);
     TimeForFullCompression(Index) = ZC(1);    
 end
+clear Index
 MeanTime = mean(TimeForFullCompression);
 line([min(TimeForFullCompression) min(TimeForFullCompression)],[-100 100],'Color',colours{1},'LineStyle','--')
 %line([MeanTime MeanTime],[-100 100],'Color',colours{1},'LineWidth',1.5)
 line([max(TimeForFullCompression) max(TimeForFullCompression)],[-100 100],'Color',colours{1},'LineStyle','--')
-clear Index
 sgtitle(['Trajectory of ' num2str(NumberOfAtoms) ' atoms at different starting positions in the VDT']);
 ylabel('Position (um)','FontSize', 14)
 xlabel('Time (ms)','FontSize', 14)
@@ -44,22 +44,27 @@ grid on
 %legend({'Quarter period','Trapping Frequency'}, 'FontSize', 14)
 figure(3);
 clf;
-envelope_1 = max(abs(Xres(:,1:17)),[],2).*1e6;
-[~,idx_1] = min(envelope_1);
-plot(tspan*1e3, envelope_1, 'LineWidth', 5, 'Color',colours{2});
+envelopes = zeros(size(Xres));
+optimalwaitingtimes  = zeros(size(Xres,2)-1,1);
+for idx = 1:size(Xres,2)-1
+    envelopes(:,idx) = max(abs(Xres(:,1:idx+1)),[],2).*1e6;
+    [~, index] = min(envelopes(:,idx));
+    optimalwaitingtimes(idx) = tspan(index)*1e3;
+end
+InitPos = 80; %in um
+idx = find(round(initialPositions.*1e6)==InitPos);
+plot(tspan*1e3, envelopes(:,idx), 'LineWidth', 5, 'Color',colours{2});
 hold on
 plot(tspan*1e3, abs(Xres).*1e6,'HandleVisibility', 'Off');
-envelope_2 = max(abs(Xres(:,1:15)),[],2).*1e6;
-[~,idx_2] = min(envelope_2);
-plot(tspan*1e3, envelope_2, 'LineWidth', 5, 'Color',colours{3});
-envelope_3 = max(abs(Xres(:,1:13)),[],2).*1e6;
-[~,idx_3] = min(envelope_3);
-plot(tspan*1e3, envelope_3, 'LineWidth', 5, 'Color',colours{4});
 xlabel('Time (ms)','FontSize', 14)
 ylabel('Position (um)','FontSize', 14)
-legend({['Upto 80 um: \tau_{wait}^{opt} ~ ' num2str(tspan(idx_1)*1e3, '%.2f') ' ms'],...
-        ['Upto 60 um: \tau_{wait}^{opt} ~ ' num2str(tspan(idx_2)*1e3, '%.2f') ' ms'],...
-        ['Upto 40 um: \tau_{wait}^{opt} ~ ' num2str(tspan(idx_3)*1e3, '%.2f') ' ms']}, 'FontSize', 14)
+legend({['Upto ' num2str(initialPositions(idx)*1e6) ' um: \tau_{wait}^{opt} ~ ' num2str(optimalwaitingtimes(12), '%.2f') ' ms']}, 'FontSize', 14)
+sgtitle('Optimal waiting times for different capture ranges');
+figure(4);
+clf
+plot(initialPositions(2:end-1)*1e6,optimalwaitingtimes(1:size(Xres, 2)-2), '--o', 'LineWidth', 2)
+xlabel('Capture Range (um)','FontSize', 14)
+ylabel('Optimal Waiting Time (ms)','FontSize', 14)
 sgtitle('Optimal waiting times for different capture ranges');
 function ZC = ZeroX(x,y)
 % ZeroX has been modified so as to avoid the following error "Error using griddedInterpolant

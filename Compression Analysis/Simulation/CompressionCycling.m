@@ -4,7 +4,6 @@ poolobj = gcp('nocreate'); % Check if pool is open
 if isempty(poolobj)
     parpool;
 end
-global Power c potentialContributionD1 potentialContributionD2 PositionArray tRes t0 tf;
 PhysicsConstants;
 Wavelength = 1064e-9;                               % VDT wavelength
 c          = SpeedOfLight;
@@ -13,31 +12,55 @@ detuningD1 = 2*pi*c*(1/CsD1lambda-1/Wavelength);
 detuningD2 = 2*pi*c*(1/CsD2lambda-1/Wavelength);
 % Trap parameters
 waist_guess = 50e-6;                                % Beam waist
-Power      = 500e-3;                                % Beam power
+Trap.P     = 500e-3;                                  % Beam power
 fOscD1     = 0.344;                                 % D1 Absorption oscillator strength
 fOscD2     = 0.714;                                 % Absorption oscillator strength
 potentialContributionD1 = (fOscD1*CsD1Gamma/(2*pi*c/CsD1lambda)^3)*(1/detuningD1+(1/(detuningD1+2*Frequency)));
 potentialContributionD2 = (fOscD2*CsD2Gamma/(2*pi*c/CsD2lambda)^3)*(1/detuningD2+(1/(detuningD2+2*Frequency)));
-PositionArray = 1:10:100;
-tRes        = 0.5e-6;                              % Resolution for the ODE solver (s)
+InitialDistribution = 1:2:80;
+tRes        = 0.5e-6;                               % Resolution for the ODE solver (s)
 t0          = 0;                                    % Starting time (s)
-tf          = 20e-3;                                 % Final time (s)
-
-fcn = @(w) sum(diff(Optimizer(w)));
-lb = 50e-6;
-ub = 150e-6;
-optimumwaist = fmincon(fcn, waist_guess,[],[],[],[],lb,ub); 
-% Local minimum was found that satisfies the constraints.
-% This minimum was 64.261e-06 m. <-----Took a long time!
-% Optimization completed because the objective function is non-decreasing in 
-% feasible directions, to within the value of the optimality tolerance,
-% and constraints are satisfied to within the value of the constraint tolerance.
-
-function TimesForFullCompression = Solver(tRes, t0, tf, Trap)
-    global PositionArray
+WaitTime    = 2e-3;                                 % Final time (s)
+CompressionCycles = 3;                              % CompressionCycles
+NumberOfAtoms = length(InitialDistribution);
+tNumPoints  = floor(CompressionCycles*WaitTime/tRes)+CompressionCycles;             % Number of sample points in time between t0 and final time
+tspan = linspace(t0,CompressionCycles*WaitTime,tNumPoints);
+Trap.w0     = 50e-6;                                % Beam waist
+I0 = 2.*Trap.P./(pi.*(Trap.w0).^2);                 % Single peak beam intensity, factor of 2 because two counter propagating beams
+Imax = 2*I0;                                        % Multiply another factor of 2 because of interference
+Trap.U0 = -(3*pi*c^2*Imax/2)*(potentialContributionD1+potentialContributionD2);
+Trajectories = zeros(tNumPoints, NumberOfAtoms);
+for idx = 1:CompressionCycles
+    [CurrentDistribution,~] = Solver(tRes, t0, WaitTime, Trap, InitialDistribution);
+    Trajectories((idx-1)*size(CurrentDistribution,1)+1:(idx*size(CurrentDistribution,1)),:) = CurrentDistribution;  
+    InitialDistribution = CurrentDistribution(end,:).*1e6;
+end
+%% Plotting
+% Plot all trajectories 
+figure(1)
+clf
+set(gcf, 'Units', 'normalized');
+set(gcf, 'OuterPosition', [0.5 0.5 0.25 0.45]);
+colours = {[0, 0.4470, 0.7410],[0.8500, 0.3250, 0.0980],[0.9290, 0.6940, 0.1250],[0.4940, 0.1840, 0.5560],[0.4660, 0.6740, 0.1880], [0.6350, 0.0780, 0.1840]};
+for Index = 1:NumberOfAtoms
+    plot(tspan*1e3, Trajectories(:,Index).*1e6, 'HandleVisibility', 'Off');
+    hold on
+end
+clear Index
+for Index = 1:CompressionCycles
+    line([Index*(WaitTime*1e3) Index*(WaitTime*1e3)],[-100 100],'Color',colours{1},'LineStyle','--')
+end
+clear Index
+sgtitle(['Trajectory of ' num2str(NumberOfAtoms) ' atoms up to ' num2str() ' um for ' num2str(CompressionCycles) ' cycles']);
+ylabel('Position (um)','FontSize', 14)
+xlabel('Time (ms)','FontSize', 14)
+grid on
+hold off
+clear all
+function [Xres, Vres] = Solver(tRes, t0, tf, Trap, InitialDistribution)
     tNumPoints  = floor(tf/tRes)+1;     % Number of sample points in time between t0 and tf
     tspan = linspace(t0,tf,tNumPoints); % Solver calculates atom position for each of these timesteps in this time array
-    initialPositions = PositionArray.*1e-6;
+    initialPositions = InitialDistribution.*1e-6;
     NumberOfAtoms = length(initialPositions);
     Xres = zeros(length(tspan),NumberOfAtoms);
     Vres = zeros(length(tspan),NumberOfAtoms);  
@@ -51,21 +74,6 @@ function TimesForFullCompression = Solver(tRes, t0, tf, Trap)
         progressbar.PB_iterate();
     end
     clear Index
-    TimesForFullCompression = zeros(NumberOfAtoms,1);  
-    for Index = 1:NumberOfAtoms
-        ZC = ZeroX(tspan*1e3,Xres(:,Index).*1e6);
-        TimesForFullCompression(Index) = ZC(1); 
-    end
-end
-function ret = Optimizer(Waist)
-    global Power c potentialContributionD1 potentialContributionD2 tRes t0 tf;
-    % Trap parameters
-    Trap.w0   = Waist;                                  % Beam waist
-    Trap.P    = Power;                                  % Beam power
-    I0 = 2.*Trap.P./(pi.*(Trap.w0).^2);                 % Single peak beam intensity, factor of 2 because two counter propagating beams
-    Imax = 2*I0;                                        % Multiply another factor of 2 because of interference
-    Trap.U0 = -(3*pi*c^2*Imax/2)*(potentialContributionD1+potentialContributionD2);
-    ret = Solver(tRes, t0, tf, Trap);
 end
 %% helper functions
 function ret = odefcn(~, x, Trap)

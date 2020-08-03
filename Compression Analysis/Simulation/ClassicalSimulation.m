@@ -43,13 +43,13 @@ ylabel('Force (x 10^{-23} N)','FontSize', 14)
 legend({'Potential', 'Force'},'FontSize', 14)
 sgtitle(['Vertical Dipole Trap of depth = ' num2str(abs(Trap.U0InTemperature*1e6),'%.2f') ' uK'])
 %% Simulation of trajectory of an atom allowed to oscillate in the trap
-tRes        = 0.05e-6;              % Resolution for the ODE solver (s)
+tRes        = 0.5e-6;              % Resolution for the ODE solver (s)
 t0          = 0;                    % Starting time (s)
-tf          = 2e-3;                % Final time (s)
+tf          = 20e-3;                % Final time (s)
 tNumPoints  = floor(tf/tRes)+1;     % Number of sample points in time between t0 and tf
 tspan = linspace(t0,tf,tNumPoints); % Solver calculates atom position for each of these timesteps in this time array
-initialPositions = (1:1:10).*1e-6;
-%initialPositions = (1:10:50).*1e-6;
+%initialPositions = (1:1:10).*1e-6;
+initialPositions = (1:1:100).*1e-6;
 %initialPositions = union((1:1:10), (10:10:100)).*1e-6;
 NumberOfAtoms = length(initialPositions);
 Xres = zeros(length(tspan),NumberOfAtoms);
