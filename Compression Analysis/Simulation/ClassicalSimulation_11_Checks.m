@@ -81,12 +81,14 @@ for kk = 1:4
             initialTemperature = sqrt(FractionOfInitialPotential) * initialTemperatureBeforeAdiabaticRampDown;
             MBD = MaxwellBoltzmannDistribution(initialTemperature, velocities);
             MBD     = MBD./sum(MBD);
-            plot(velocities*1e6, MBD, 'Color', colours{Index})
+            MBD = horzcat(flip(MBD), MBD);
+            VelocityRange = horzcat(-flip(velocities*1e3), velocities*1e3);
+            plot(VelocityRange, MBD, 'Color', colours{Index})
             ltext{end + 1} = ['GS Pop = ' num2str(GroundStatePopulations(Index))];
             hold on
         end
         hold off
-        xlabel('Velocities (um/s)','FontSize', 14)
+        xlabel('Velocities (mm/s)','FontSize', 14)
         ylabel('Probability','FontSize', 14)
         legend(ltext)
     elseif kk == 4
@@ -104,12 +106,14 @@ for kk = 1:4
             initialTemperature = sqrt(FractionsOfInitialPotential(Index)) * initialTemperatureBeforeAdiabaticRampDown;
             MBD = MaxwellBoltzmannDistribution(initialTemperature, velocities);
             MBD     = MBD./sum(MBD);
-            plot(velocities*1e6, MBD, 'Color', colours{Index})
+            MBD = horzcat(flip(MBD), MBD);
+            VelocityRange = horzcat(-flip(velocities*1e3), velocities*1e3);
+            plot(VelocityRange, MBD, 'Color', colours{Index})
             ltext{end + 1} = ['Fraction = ' num2str(FractionsOfInitialPotential(Index))];
             hold on
         end
         hold off
-        xlabel('Velocities (um/s)','FontSize', 14)
+        xlabel('Velocities (mm/s)','FontSize', 14)
         ylabel('Probability','FontSize', 14)
         lg = legend(ltext);
         title(lg, ['GS Pop = ' num2str(GroundStatePopulation)])
@@ -135,8 +139,11 @@ function ret = MaxwellBoltzmannDistribution(Temperature, Velocity)
     PhysicsConstants;
     m = Cs133Mass;
     k = BoltzmannConstant;
-    ret = 4*pi*sqrt((m/(2*pi*k*Temperature))^3) ...
-         * Velocity.^2  .* exp((-m*Velocity.^2)/(2*k*Temperature));
+    %ret = 4*pi*sqrt((m/(2*pi*k*Temperature))^3) ...
+    %     * Velocity.^2  .* exp((-m*Velocity.^2)/(2*k*Temperature));
+    ret = sqrt((m/(2*pi*k*Temperature))^(1/2)) ...
+         .* exp((-m*Velocity.^2)/(2*k*Temperature));
+    ret = ret./sum(ret);
 end
 function ret = drawSamplesFromDistribution(NumberOfSamples, Xvals, ProbabilityDensityFunction)
     % ret = drawSamplesFromDistribution(NumberOfAtoms, velocities, ProbabilityDensityFunction)

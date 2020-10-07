@@ -20,7 +20,7 @@ for ii = 1:length(GroundStatePopulations)
     InitialEntropy = (PlanckConstant*InitialLongitudinalTrapFrequency) / (BoltzmannConstant*InitialTemperature);
     for  jj = 1:length(LongitudinalTrapFrequencies)
         Temperature = (PlanckConstant/(BoltzmannConstant*InitialEntropy)) * LongitudinalTrapFrequencies(jj);
-        DeltaPClassical(ii, jj) = Cs133Mass * sqrt((3*BoltzmannConstant*Temperature/Cs133Mass) - (8*BoltzmannConstant*Temperature/ (pi *Cs133Mass)));
+        DeltaPClassical(ii, jj) = Cs133Mass * sqrt(BoltzmannConstant*Temperature/Cs133Mass);
     end
     ltext{end+1} = ['\Delta v_{Classical}--> ' num2str(100*GroundStatePopulations(ii)) '% GS Population'];
 end
@@ -36,7 +36,7 @@ plot(TrapDepths, DeltaPClassical.*1e6./Cs133Mass)
 hold on
 plot(TrapDepths, DeltaPQuantumMechanical.*1e6./Cs133Mass, '--')
 ylim([0 max(DeltaPClassical(:).*1e6./Cs133Mass)])
-sgtitle(['Velocity Spread v Release Depth (Upto ' num2str(100*FractionOfInitialPotential) '% of initial depth)']);
+sgtitle(['Velocity Spread (1D) v Release Depth (Upto ' num2str(100*FractionOfInitialPotential) '% of initial depth)']);
 xlabel('Trap Depth (in kHz)')
 ylabel('Uncertainty in Velocity (\mum/s)')
 legend(ltext, 'Location', 'NorthWest')
