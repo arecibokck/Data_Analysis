@@ -11,6 +11,7 @@ Wavelength = 1064e-9;                               % VDT wavelength
 Frequency  = 2*pi*SpeedOfLight/Wavelength;
 detuningD1 = 2*pi*SpeedOfLight*(1/CsD1lambda-1/Wavelength);
 detuningD2 = 2*pi*SpeedOfLight*(1/CsD2lambda-1/Wavelength);
+
 % Trap parameters
 Trap.k = 2*pi./Wavelength;
 Trap.w0   = 50e-6;                                  % Beam waist
@@ -24,20 +25,31 @@ potentialContributionD2 = (fOscD2*CsD2Gamma/(2*pi*SpeedOfLight/CsD2lambda)^3)*(1
 I0 = 2.*Trap.P./(pi.*(Trap.w0).^2);  % Single peak beam intensity, factor of 2 because two counter propagating beams
 Imax = 2*I0; % Multiply another factor of 2 because of interference
 Trap.U0 = -(3*pi*SpeedOfLight^2*Imax/2)*(potentialContributionD1+potentialContributionD2);
-Trap.U0InTemperature = Trap.U0/BoltzmannConstant;
-Trap.U0InFreq = Trap.U0/PlanckConstant;
+Trap.TransverseTrappingFrequencyinHz = (1/(2*pi)) *  sqrt(4*abs(Trap.U0)/(Cs133Mass*Trap.w0^2));
+Trap.TransverseTrappingFrequency = (2*pi) *  Trap.TransverseTrappingFrequencyinHz;
+Trap.TrappingPeriod = 1/Trap.TransverseTrappingFrequencyinHz;
+Trap.U0InTemperature = abs(Trap.U0)/BoltzmannConstant;
+Trap.U0InFreq = abs(Trap.U0)/PlanckConstant;
 %% Temperature induced broadening of velocity (momentum) distribution post adiabatic release by ramping down the HDT for horiontal compression in the VDT
-LongitudinalTrapFrequency = 56; %in kHz
-FractionOfInitialPotential = 0.05;
+LongitudinalTrapFrequencyinHz = 56e+03; 
+Lambda                        = 866e-9; % HDT wavelength
+U0 = - 1e3 * PlanckConstant * LatticeProperties.estimateTrapDepthFromHeatingSidebandFreqDT1DT3(LongitudinalTrapFrequencyinHz*1e-3);
+
+RecoilEnergy = (PlanckConstantReduced * (2*pi/Lambda))^2 / (2*Cs133Mass);
+InitialTrapDepthInUnitsOfRecoilEnergy = abs(U0)/RecoilEnergy;
+FinalTrapDepthInUnitsOfRecoilEnergy = 5; 
+
+FractionOfInitialPotential = FinalTrapDepthInUnitsOfRecoilEnergy / InitialTrapDepthInUnitsOfRecoilEnergy;
+
 Spreads = {};
 for GroundStatePopulation = 0.1:0.2:0.8
-    deltaE = PlanckConstantReduced * 2 * pi * LongitudinalTrapFrequency;
+    deltaE = PlanckConstantReduced * 2 * pi * LongitudinalTrapFrequencyinHz;
     initialTemperatureBeforeAdiabaticRampDown = -(7.24297e22 * deltaE) / log(1 - GroundStatePopulation);
     initialTemperature = sqrt(FractionOfInitialPotential) * initialTemperatureBeforeAdiabaticRampDown;
     %% Simulation of trajectory of an atom allowed to oscillate in the trap
     tRes        = 50e-6;                % Resolution for the ODE solver (s)
     t0          = 0;                    % Starting time (s)
-    tf          = 10e-3;                % Final time (s)
+    tf          = 5e-3;                % Final time (s)
     tNumPoints  = floor(tf/tRes)+1;     % Number of sample points in time between t0 and tf
     tspan = linspace(t0,tf,tNumPoints); % Solver calculates atom position for each of these timesteps in this time array
     NumberOfAtoms = 10000;

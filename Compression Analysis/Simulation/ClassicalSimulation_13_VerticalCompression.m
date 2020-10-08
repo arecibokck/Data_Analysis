@@ -145,8 +145,8 @@ else
     PlotTrajectories                               = false;
     PlotEnvelopesAndOptimalWaitingTimes            = false;
     PlotPhaseSpaceEvolution                        = true;
-    PlotRMSpread                                   = true;
-    PlotPhaseSpaceAnalysis                         = true;
+    PlotRMSpread                                   = false;
+    PlotPhaseSpaceAnalysis                         = false;
 end
 
 if PlotPotential
@@ -350,7 +350,7 @@ function plotPhaseSpaceEvolution(NumberOfAtoms, Trap, GroundStatePopulation, Fin
         hold on
         plot(Pos*1e6, EscapeVelocities, 'Color', [1 1 1], 'LineStyle', '--')
         plot(Pos*1e6, -EscapeVelocities, 'Color', [1 1 1], 'LineStyle', '--')
-        text(round(min(Xres(:))*1e6, 1)+2, -round(max(Vres(:))*1e3, 1)+5, ['Time : ' num2str(tspan(Time)*1e3) ' ms'], 'Color', [1 1 1])
+        text(round(min(Xres(:))*1e6, 1)+2, -round(max(Vres(:))*1e3, 1)+5, ['Time : ' num2str(tspan(Time)*1e3) ' ms'], 'Color', [1 1 1], 'FontSize', 14)
         xlabel('Position (\mum)','FontSize', 14)
         ylabel('Velocity (mm/s)','FontSize', 14)
         xlim([-round(max(Xres(:))*1e6, 1) round(max(Xres(:))*1e6, 1)])
@@ -552,8 +552,8 @@ function plotPhaseSpaceAnalysis(Trap, NumberOfAtoms, tspan, Xres, Vres, initialT
     plot(Periods, VelocitySpreads.*1e3, 'Color',colours{2}, 'LineWidth', 2)
     VRMSClassical = 1e3 * sqrt((BoltzmannConstant*initialTemperature/Cs133Mass));
     line([0 max(Periods)], [VRMSClassical VRMSClassical], 'LineStyle', '--', 'LineWidth', 2)
-    text(max(Periods)-2.5, VRMSClassical-5, ['v^{t=0}_{RMS} = ' num2str(VelocitySpreads(1)*1e3) ' mm/s'], 'FontSize', 14)
-    text(max(Periods)-2.5, VRMSClassical-2, ['Expected v^{t=0}_{RMS} = ' num2str(VRMSClassical) ' mm/s'], 'FontSize', 14)
+    text(max(Periods)-2.5, VRMSClassical+9, ['v^{t=0}_{RMS} = ' num2str(VelocitySpreads(1)*1e3) ' mm/s'], 'FontSize', 14)
+    text(max(Periods)-2.5, VRMSClassical+3, ['Expected v^{t=0}_{RMS} = ' num2str(VRMSClassical) ' mm/s'], 'FontSize', 14)
     ylim([0 max(VelocitySpreads.*1e3)+5])
     xlabel('t_{hold} (in ms)','FontSize', 14)
     ylabel('mm/s','FontSize', 14)
