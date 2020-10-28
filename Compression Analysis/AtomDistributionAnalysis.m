@@ -1,18 +1,18 @@
 % - Create the Analyzer-Object
-DataFolder = '/home/karthik/Documents/MATLAB/adwin/trunk/Scripts/+Karthik/Data Analysis/Compression Analysis';
+DataFolder = 'C:\Users\DQSIM team\Documents\MATLAB\SDT2D\adwin\trunk\Scripts\+Karthik\Data Analysis\Compression Analysis';
 SaveFolder = 'Results';
 options={};
 %options=[options,{'Parameter','Value'}];
-options=[options,{'DataFolder',DataFolder}];            % Default=userInput
-options=[options,{'SaveFolder', SaveFolder}];           % Default=DataFolder
-options=[options,{'SaveString','VerticalCompression'}]; % Default=DefaultName
-options=[options,{'SavePlot', true}];                   % Default=DefaultName
-options=[options,{'ShowPlot', true}];                   % Default=DataFolder
+options=[options,{'DataFolder',DataFolder}];            % Default = userInput
+options=[options,{'SaveFolder', SaveFolder}];           % Default = DataFolder
+options=[options,{'SaveString','VerticalCompression'}]; % Default = DefaultName
+options=[options,{'SavePlot', false}];                  % Default = DefaultName
+options=[options,{'ShowPlot', true}];                   % Default = DataFolder
 Analyzer = Measurements.AnalyzeMeasurement(options);
 % - get the FileNames
 Analyzer.getFileNames;
 % - Choose Measurement
-k = 2;
+k = 1;
 meas = Analyzer.loadMeasurement(k);
 global colours
 colours = {[0, 0.4470, 0.7410],[0.8500, 0.3250, 0.0980],[0.9290, 0.6940, 0.1250],[0.4940, 0.1840, 0.5560],[0.4660, 0.6740, 0.1880], [0.6350, 0.0780, 0.1840]};
@@ -20,18 +20,30 @@ colours = {[0, 0.4470, 0.7410],[0.8500, 0.3250, 0.0980],[0.9290, 0.6940, 0.1250]
 AnalysisMethod = 'isorings'; % options - "isorings" | "strips"
 AnalyzeFWHMRatio = true;
 AnalyzePeakIntensityRatio = true;
-PlotAtomCountAndSurvival = true;
+PlotAtomCountAndSurvival = false;
 
 switch AnalysisMethod
     case 'isorings'
         [Ratios_Spread, spread_errors, Ratios_PeakIntensities, peakint_errors] = isoRingAnalysis(meas,Analyzer);
     case 'strips'
         [Ratios_Spread, spread_errors, Ratios_PeakIntensities, peakint_errors] = stripAnalysis(meas,Analyzer);
+    case 'marginals'
+        marginalAnalysis(meas,Analyzer);
 end
 %%
 if AnalyzeFWHMRatio
-    fit_guess = [0.05; 0;  0.5;  0; 0.55]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
-    fixed_params = [nan,nan,nan,0,nan];
+%% 2020-07-14
+%     fit_guess = [0.05; 0;  0.5;  0; 0.55]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
+%     fixed_params = [nan,nan,nan,0,nan];
+%% 2020-07-14 Changed VDT Position
+    fit_guess = [0; 0;  0.5;  0; 0.6]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
+    fixed_params = [nan,0.0008,nan,0,nan];
+%% 2020-08-03 
+%     fit_guess = [0.05; 0;  0;  0; 0.515]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
+%     fixed_params = [nan,nan,0.63,0,nan];
+%% 2020-08-03 Changed VDT Position
+%     fit_guess = [0.05; 0;  0;  0; 0.515]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
+%     fixed_params = [nan,nan,0.63,0,nan];
     analyzeFWHMRatio(meas, Analyzer, Ratios_Spread, spread_errors, fit_guess, fixed_params)
 end
 %%
@@ -56,10 +68,24 @@ CorrectedAverageImages = bsxfun(@times,CorrectedAverageImages,reshape(EtaloningM
 %% - Analyze by plotting an iso-ring around a point
 Ratios_Spread = zeros(1,size(CorrectedAverageImages,1));
 Ratios_PeakIntensities = zeros(1,size(CorrectedAverageImages,1));
-Point = Measurements.Measurement.getDefaultSettings.Origin;
-[~,~,~,~,RSquared] = FluoImageAnalysis.ImageAnalysis.getPosition(zeros(489),'Origin',Point,'Units','um');
-m = size(meas.runData.usedScanParameters.WaitTimeHorizontal,1);
-n = size(meas.runData.usedScanParameters.WaitTimeHorizontal,2);
+%%
+% VDT_Position = Measurements.Measurement.getDefaultSettings.Origin;
+%% 2020-07-14
+% VDT_Position  = [258 301]; 
+VDT_Position  = [260 301]; 
+%% 2020-08-03
+%VDT_Position  = [253 279]; 
+%%
+[~,~,~,~,RSquared] = FluoImageAnalysis.ImageAnalysis.getPosition(zeros(489),'Origin',VDT_Position,'Units','um');
+
+if isfield(meas.runData.usedScanParameters, 'WaitTimeHorizontal')
+    m = size(meas.runData.usedScanParameters.WaitTimeHorizontal,1);
+    n = size(meas.runData.usedScanParameters.WaitTimeHorizontal,2);
+elseif isfield(meas.runData.usedScanParameters, 'probeTime')
+    m = size(meas.runData.usedScanParameters.probeTime,1);
+    n = size(meas.runData.usedScanParameters.probeTime,2);
+end
+
 spread_errors = zeros(1,m);
 peakint_errors = zeros(1,m);
 Images = cell (m, n);
@@ -125,7 +151,6 @@ for Run = 1:size(CorrectedAverageImages,1)
     TString3 = 'Final integrated fluorescence in annulus';
     TString4 = ['Final Spread  from Fit = FWHM: ' num2str(spread(2))];
     legend(win(1), {TString1, TString2, TString3, TString4},'FontSize',8)
-    
     Ratios_Spread(Run) = spread(2)/spread(1);
     plot(win(2), meas.analysisData.MWSpec.xvals(Run), Ratios_Spread(Run), 'o','MarkerSize',3,...
         'MarkerEdgeColor',colours{2},...
@@ -139,8 +164,8 @@ for Run = 1:size(CorrectedAverageImages,1)
     set(get(win(2),'XLabel'), 'String', 'Wait Time \mus','FontSize',16);
     set(get(win(2),'YLabel'), 'String', 'Ratio','FontSize',16);
     legend(win(2), {'Spread - Final:Initial'}, 'Location', 'northeast','FontSize',10);
-    [xvals,yvals,~,~,~] = FluoImageAnalysis.ImageAnalysis.getPosition(zeros(49*10),'Origin',[230 282],'pixelsPerLatticeSite',1.7);
-    imagesc(win(4),xvals,yvals, FirstImage);
+    [xvals,yvals,~,~,~] = FluoImageAnalysis.ImageAnalysis.getPosition(zeros(49*10),'Origin',VDT_Position,'pixelsPerLatticeSite',1.7);
+    imagesc(win(4),xvals,yvals, flipud(FirstImage));
     set(win(4), 'xlim', [min(xvals) max(xvals)]);
     set(win(4), 'ylim', [min(yvals) max(yvals)]);
     rectangle(win(4), 'Position', [-5 -5 10 10],'EdgeColor','r','LineWidth',2)
@@ -161,7 +186,8 @@ for Run = 1:size(CorrectedAverageImages,1)
     set(get(win(3),'XLabel'), 'String', 'Wait Time \mus','FontSize',16);
     set(get(win(3),'YLabel'), 'String', 'Ratio','FontSize',16);
     legend(win(3), {'Peak Intensity - Initial:Final'}, 'Location', 'northeast','FontSize',10);
-    imagesc(win(5),xvals,yvals, SecondImage);
+    
+    imagesc(win(5),xvals,yvals, flipud(SecondImage));
     set(win(5), 'xlim', [min(xvals) max(xvals)]);
     set(win(5), 'ylim', [min(yvals) max(yvals)]);
     hold on
@@ -188,6 +214,13 @@ end
 end
 function [Ratios_Spread, spread_errors, Ratios_PeakIntensities, peakint_errors] = stripAnalysis(meas, Analyzer)  
 global colours
+%% - Get and correct average images
+[AverageImages,~,AverageBackGroundImageFull] = meas.getAverageImages;
+EtaloningMask = helperFunctions.getEtaloningMask();
+ImageArraySize = size(AverageImages);
+CorrectedAverageImages = AverageImages-AverageBackGroundImageFull;
+%UncorrectedAverageImages = CorrectedAverageImages;
+CorrectedAverageImages = bsxfun(@times,CorrectedAverageImages,reshape(EtaloningMask,1,1,ImageArraySize(end-1),ImageArraySize(end)));
 %% - Analyze strips
 Ratios_Spread = zeros(1,size(CorrectedAverageImages,1));
 Ratios_PeakIntensities = zeros(1,size(CorrectedAverageImages,1));
@@ -228,12 +261,14 @@ for i = 1:m
     spread_errors(i) = std(Ratios_Spread(1:n))/sqrt(n);
     peakint_errors(i) = std(Ratios_PeakIntensities(1:n))/sqrt(n);
 end
-fignumber = 1;
+fignumber = 2;
 figure(fignumber);
-set(gcf, 'Position', [39, 445, 1892, 521])
+set(gcf, 'Position', [8, 36, 1892, 958]) %Width = 521 for original layout of 3 subplots without images
 win(1) = subplot(1, 3, 1);
-win(2) = subplot(1, 3, 2);
-win(3) = subplot(1, 3, 3);
+win(2) = subplot(2, 3, 2);
+win(3) = subplot(2, 3, 3);
+win(4) = subplot(2, 3, 5);
+win(5) = subplot(2, 3, 6);
 set(win,'Nextplot','add')
 for Run = 1:size(CorrectedAverageImages,1)
     FirstImage = squeeze(CorrectedAverageImages(Run,1,:,:));
@@ -246,17 +281,18 @@ for Run = 1:size(CorrectedAverageImages,1)
     set(get(win(1),'XLabel'), 'String', 'Distance [um]','FontSize',16);
     set(get(win(1),'YLabel'), 'String', 'Average Fluorescence','FontSize',16);
     hold on
-    %       [fit_params_firstimage, fit_model] = VoigtFit(Points,Values, [0.5, 0.01]);
-    %       plot(win(1), Points, fit_model(Points, fit_params_firstimage(1), fit_params_firstimage(1)) / fit_model(0,fit_params_firstimage(1), fit_params_firstimage(1))*max(Values) , 'Color', colours{4});
-    [fit_params_firstimage, fit_model] = GaussFit(Points,Values, [max(Values);  0;  20; 0]);
+    % [fit_params_firstimage, fit_model] = VoigtFit(Points,Values, [0.5, 0.01]);
+    % plot(win(1), Points, fit_model(Points, fit_params_firstimage(1), fit_params_firstimage(1)) / fit_model(0,fit_params_firstimage(1), fit_params_firstimage(1))*max(Values) , 'Color', colours{4});
+    [fit_params_firstimage, fit_model] = HigherOrderGaussFit(Points,Values, [max(Values);  0;  20;  2;  500]);
+%     [fit_params_firstimage, fit_model] = SumOfGaussFit(Points,Values, [max(Values);  -10;  20;  500; max(Values)-1e3;  10;  10;  500]);
     plot(win(1), Points, fit_model(fit_params_firstimage,Points), 'Color', colours{4});
     [Points,Values] = AtomCloudDistribution_Strips(X,Y,SecondImage);
     plot(win(1), Points,Values,'--*')
     final_peakint = max(Values);
-    [fit_params_secondimage, fit_model] = GaussFit(Points,Values, [max(Values);  0;  20; 0]);
+    [fit_params_secondimage, fit_model] = HigherOrderGaussFit(Points,Values, [max(Values);  0;  20;  1;  500]);
     plot(win(1), Points, fit_model(fit_params_secondimage,Points), 'Color', colours{5});
     hold off
-    spread = [(2*sqrt(2*log(2)) * fit_params_firstimage(1));2*sqrt(2*log(2)) * fit_params_secondimage(3)];
+    spread = [(2*sqrt(2*log(2)) * fit_params_firstimage(3));2*sqrt(2*log(2)) * fit_params_secondimage(3)];
     TString1 = 'Initial integrated fluorescence in strip' ;
     TString2 = ['Initial Spread from Fit = FWHM: ' num2str(spread(1))];
     TString3 = 'Final integrated fluorescence in strip';
@@ -274,6 +310,16 @@ for Run = 1:size(CorrectedAverageImages,1)
     set(get(win(2),'XLabel'), 'String', 'Wait Time \mus','FontSize',16);
     set(get(win(2),'YLabel'), 'String', 'Ratio','FontSize',16);
     legend(win(2), {'Spread - Final:Initial'}, 'Location', 'northeast','FontSize',10);
+    
+    [xvals,yvals,~,~,~] = FluoImageAnalysis.ImageAnalysis.getPosition(zeros(49*10),'Origin',[230 282],'pixelsPerLatticeSite',1.7);
+    imagesc(win(4),xvals,yvals, flipud(FirstImage));
+    set(win(4), 'xlim', [min(xvals) max(xvals)]);
+    set(win(4), 'ylim', [min(yvals) max(yvals)]);
+    rectangle(win(4), 'Position', [-5 -5 10 10],'EdgeColor','r','LineWidth',2)
+    plot(win(4), 0, 0, 'o', 'MarkerSize', 3, 'MarkerEdgeColor', 'r','MarkerFaceColor', 'r');
+    colorbar(win(4))
+    title(win(4), 'Before compression')
+    
     Ratios_PeakIntensities(Run) = final_peakint/initial_peakint;
     plot(win(3), meas.analysisData.MWSpec.xvals(Run), Ratios_PeakIntensities(Run), '*','MarkerSize',3,...
         'MarkerEdgeColor',colours{6},...
@@ -286,6 +332,16 @@ for Run = 1:size(CorrectedAverageImages,1)
     set(get(win(3),'XLabel'), 'String', 'Wait Time \mus','FontSize',16);
     set(get(win(3),'YLabel'), 'String', 'Ratio','FontSize',16);
     legend(win(3), {'Peak Intensity - Final:Initial'}, 'Location', 'northeast','FontSize',10);
+    
+    imagesc(win(5),xvals,yvals, flipud(SecondImage));
+    set(win(5), 'xlim', [min(xvals) max(xvals)]);
+    set(win(5), 'ylim', [min(yvals) max(yvals)]);
+    hold on
+    rectangle(win(5), 'Position', [-5 -5 10 10],'EdgeColor','r','LineWidth',2)
+    plot(win(5), 0, 0, 'o', 'MarkerSize', 3, 'MarkerEdgeColor', 'r','MarkerFaceColor', 'r');
+    colorbar(win(5))
+    title(win(5), 'After compression')
+    
     % - save
     % - assert SaveString is set
     assert(~isempty(Analyzer.SaveString),...
@@ -300,6 +356,121 @@ for Run = 1:size(CorrectedAverageImages,1)
     end
 end
 end % - incomplete; needs debugging, mods
+function marginalAnalysis(meas, Analyzer)
+global colours
+%% - Get and correct average images
+[AverageImages,~,AverageBackGroundImageFull] = meas.getAverageImages;
+EtaloningMask = helperFunctions.getEtaloningMask();
+ImageArraySize = size(AverageImages);
+CorrectedAverageImages = AverageImages-AverageBackGroundImageFull;
+%UncorrectedAverageImages = CorrectedAverageImages;
+CorrectedAverageImages = bsxfun(@times,CorrectedAverageImages,reshape(EtaloningMask,1,1,ImageArraySize(end-1),ImageArraySize(end)));
+%% - Analyze by plotting an iso-ring around a point
+Ratios_Spread = zeros(1,size(CorrectedAverageImages,1));
+Ratios_PeakIntensities = zeros(1,size(CorrectedAverageImages,1));
+Point = Measurements.Measurement.getDefaultSettings.Origin;
+[~,~,~,~,RSquared] = FluoImageAnalysis.ImageAnalysis.getPosition(zeros(489),'Origin',Point,'Units','um');
+m = size(meas.runData.usedScanParameters.WaitTimeHorizontal,1);
+n = size(meas.runData.usedScanParameters.WaitTimeHorizontal,2);
+Ratios_Spread = zeros(1,size(CorrectedAverageImages,1));
+Ratios_PeakIntensities = zeros(1,size(CorrectedAverageImages,1));
+fignumber = 3;
+figure(fignumber);
+clf
+set(gcf, 'Units', 'normalized');
+set(gcf, 'OuterPosition', [0.0057 0.0389 0.637 0.9324]);
+for Run = 1:size(CorrectedAverageImages,1)
+    FirstImage = squeeze(CorrectedAverageImages(Run,1,:,:));
+    SecondImage = squeeze(CorrectedAverageImages(Run,2,:,:));
+    [xvals,yvals,~,~,~] = FluoImageAnalysis.ImageAnalysis.getPosition(zeros(489),'Origin',[230 282],'pixelsPerLatticeSite',1.7);
+
+    Ymarginal = sum(FirstImage, 2);
+    [MaxValue,~] = max(Ymarginal(:));
+    [MinValue,~] = min(Ymarginal(:));
+    Ymarginal = (Ymarginal - MinValue) / (MaxValue-MinValue);
+    
+    sb1 = subplot(8,8,[1,17]);
+    plot(xvals, Ymarginal(:), 'LineStyle', '-.', 'Color', colours{2});
+    set(sb1, 'Box', 'off', 'Color', 'none')
+    set(sb1, 'xlim', [min(xvals) max(xvals)])
+    set(sb1, 'ylim', [0 1])
+    set(sb1, 'XDir', 'reverse')
+    camroll(sb1,90)
+    
+    sb2 = subplot(8,8,[2.3,20.5]);
+    
+    imagesc(xvals,yvals, FirstImage);
+    xlim([min(xvals) max(xvals)]);
+    ylim([min(yvals) max(yvals)]);
+    colorbar
+    %xlabel('X (\mum)','FontSize', 14)
+    %ylabel('Y (\mum)','FontSize', 14)
+    %xlim([])
+    %ylim([])
+    grid on
+    
+    Xmarginal = sum(FirstImage, 1);
+    [MaxValue,~] = max(Xmarginal(:));
+    [MinValue,~] = min(Xmarginal(:));
+    Xmarginal = (Xmarginal - MinValue) / (MaxValue-MinValue);
+    
+    sb3 = subplot(8,8,[26.3,27.8], 'color', 'none');
+    plot(xvals, Xmarginal(:), 'LineStyle', '-.', 'Color', colours{6});
+    set(sb3, 'Box', 'off', 'Color', 'none')
+    set(sb3, 'xlim', [min(xvals) max(xvals)])
+    set(sb3, 'ylim', [0 1])
+    
+    %%
+    Ymarginal = sum(SecondImage, 2);
+    [MaxValue,~] = max(Ymarginal(:));
+    [MinValue,~] = min(Ymarginal(:));
+    Ymarginal = (Ymarginal - MinValue) / (MaxValue-MinValue);
+    
+    sb1 = subplot(8,8,[33,49]);
+    plot(xvals, Ymarginal(:), 'LineStyle', '-.', 'Color', colours{2});
+    set(sb1, 'Box', 'off', 'Color', 'none')
+    set(sb1, 'xlim', [min(xvals) max(xvals)])
+    set(sb1, 'ylim', [0 1])
+    set(sb1, 'XDir', 'reverse')
+    camroll(sb1,90)
+    
+    sb2 = subplot(8,8,[34.3,52.5]);
+    
+    imagesc(xvals,yvals, SecondImage);
+    xlim([min(xvals) max(xvals)]);
+    ylim([min(yvals) max(yvals)]);
+    colorbar
+    %xlabel('X (\mum)','FontSize', 14)
+    %ylabel('Y (\mum)','FontSize', 14)
+    %xlim([])
+    %ylim([])
+    grid on
+    
+    Xmarginal = sum(SecondImage, 1);
+    [MaxValue,~] = max(Xmarginal(:));
+    [MinValue,~] = min(Xmarginal(:));
+    Xmarginal = (Xmarginal - MinValue) / (MaxValue-MinValue);
+    
+    sb3 = subplot(8,8,[58.3,59.8], 'color', 'none');
+    plot(xvals, Xmarginal(:), 'LineStyle', '-.', 'Color', colours{6});
+    set(sb3, 'Box', 'off', 'Color', 'none')
+    set(sb3, 'xlim', [min(xvals) max(xvals)])
+    set(sb3, 'ylim', [0 1])
+
+    % - save
+    % - assert SaveString is set
+    assert(~isempty(Analyzer.SaveString),...
+        'Error: SaveString is not set')
+    if Analyzer.SavePlot
+        SaveAppend={...
+            ['HoldTime:' num2str(meas.runData.usedScanParameters.WaitTimeHorizontal(Run)) 'us'],...
+            };
+        print(fignumber,[Analyzer.SaveFolder filesep SaveAppend{1}], '-dpng','-r300');
+    else
+        pause(0.2);
+    end
+end
+end
 function analyzeFWHMRatio(meas, Analyzer,Ratios_Spread, spread_errors, fit_guess, fixed_params)
 %%
 %     plot(meas.runData.usedScanParameters.WaitTimeHorizontal(:,1), Ratios_Spread, '--', 'Color', colours{2}, 'HandleVisibility','off');
@@ -344,7 +515,7 @@ CompressionRatioFit = FitDataGauss(...
     'LowerBoundParams',[0,0,0,-inf,0],...
     'UpperBoundParams',[inf,inf,inf,inf,1],...
     'StandardErrors',compressionRatios.stderr);
-fignumber = 2;
+fignumber = 4;
 figure(fignumber);
 subplot(2,1,1);
 clf;
@@ -352,6 +523,7 @@ CompressionRatioFit.doFit;
 compressionRatios.plotData;
 CompressionRatioFit.plotFitModel;
 CompressionRatioFit.printFitReport;
+ylim([0 1.2])
 grid on
 if Analyzer.SavePlot
     SaveAppend={...
@@ -380,7 +552,7 @@ CompressionRatioFit = FitDataGauss(...
     'LowerBoundParams',[0,0,0,-inf,0],...
     'UpperBoundParams',[inf,inf,inf,inf,inf],...
     'StandardErrors',compressionRatios.stderr);
-fignumber = 3;
+fignumber = 5;
 figure(fignumber);
 subplot(2,1,1);
 clf;
@@ -388,6 +560,7 @@ CompressionRatioFit.doFit;
 compressionRatios.plotData;
 CompressionRatioFit.plotFitModel;
 CompressionRatioFit.printFitReport;
+ylim([0 1.2])
 grid on
 if Analyzer.SavePlot
     SaveAppend={...
@@ -399,7 +572,7 @@ end
 function plotAtomCountAndSurvival(meas, Analyzer)
 global colours
 %%  Estimating atom count from fluorescence
-fignumber = 4;
+fignumber = 6;
 figure(fignumber);
 set(gcf, 'Position', [500, 200, 900, 600])
 cf = 3.8785e-05;
@@ -502,6 +675,18 @@ function [fit_params, fit_model]  = GaussFit(x,y, varargin)
     RsqStatistic = 1 - (sum((y' - fit_model(fit_params,x)').^2) / sum((y' - mean(y)).^2));
     fit_params = [fit_params;RsqStatistic];
 end
+function [fit_params, fit_model]  = HigherOrderGaussFit(x,y, varargin)
+    narginchk(2,3);
+    fit_guess = [max(y);  0;  30;  2;  0];
+    if nargin==3
+       fit_guess = varargin{1};   
+    end
+    fit_model = @(p, x) p(1) .* exp(-((x-p(2)).^2./(2*p(3)^2)).^p(4)) + p(5); % Function to fit
+    fcn = @(p) sum((fit_model(p,x)' - y').^2);                        % Least-Squares cost function
+    fit_params = fminsearch(fcn, fit_guess);                          % Minimise Least-Squares
+    RsqStatistic = 1 - (sum((y' - fit_model(fit_params,x)').^2) / sum((y' - mean(y)).^2));
+    fit_params = [fit_params;RsqStatistic];
+end
 function [fit_params, fit_model]  = FlatTopGaussFit(x,y, varargin)
     narginchk(2,3);
     fit_guess = [max(y);  0;  30;  0];
@@ -509,6 +694,18 @@ function [fit_params, fit_model]  = FlatTopGaussFit(x,y, varargin)
        fit_guess = varargin{1};   
     end
     fit_model = @(p, x) p(1) .* exp(-(max(x-p(2),0)).^2./(2*p(3)^2)) + p(4); % Function to fit
+    fcn = @(p) sum((fit_model(p,x)' - y').^2);                        % Least-Squares cost function
+    fit_params = fminsearch(fcn, fit_guess);                          % Minimise Least-Squares
+    RsqStatistic = 1 - (sum((y' - fit_model(fit_params,x)').^2) / sum((y' - mean(y)).^2));
+    fit_params = [fit_params;RsqStatistic];
+end
+function [fit_params, fit_model]  = SumOfGaussFit(x,y, varargin)
+    narginchk(2,3);
+    fit_guess = [max(y);  -25;  20;  500; max(y)-900;  18;  20;  500];
+    if nargin==3
+       fit_guess = varargin{1};   
+    end
+    fit_model = @(p, x) (p(1) .* exp(-(x-p(2)).^2./(2*p(3)^2)) + p(4)) + (p(5) .* exp(-(x-p(2)).^2./(2*p(7)^2)) + p(8)); % Function to fit
     fcn = @(p) sum((fit_model(p,x)' - y').^2);                        % Least-Squares cost function
     fit_params = fminsearch(fcn, fit_guess);                          % Minimise Least-Squares
     RsqStatistic = 1 - (sum((y' - fit_model(fit_params,x)').^2) / sum((y' - mean(y)).^2));
