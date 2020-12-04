@@ -5,107 +5,165 @@ if isempty(poolobj)
     parpool;
 end
 DebugMode = false;
-%% initializing the VDT potential
+DoSave  = false;
+%% initializing the HDT potential
 PhysicsConstants;
-Wavelength = 1064e-9;                               % VDT wavelength
+% Trap parameters
+Trap.LongitudinalTrapFrequencyinHz = 56e+03;
+Trap.U0 = - 1e3 * PlanckConstant * LatticeProperties.estimateTrapDepthFromHeatingSidebandFreqDT1DT3(Trap.LongitudinalTrapFrequencyinHz*1e-3);
+Trap.U0InTemperature = abs(Trap.U0)/BoltzmannConstant;
+Trap.U0InFreq = abs(Trap.U0)/PlanckConstant;
+%result = LatticeProperties.estimateTrapFreq33FromTrapDepth(0,0,0,0,Trap.U0InFreq*1e-3);
+%Trap.TransverseTrapFrequencyinHz = result(2) * 1e3;
+%Trap.LongitudinalTrapFrequency = (2*pi) *  Trap.LongitudinalTrapFrequencyinHz;
+%Trap.TransverseTrapFrequency = (2*pi) *  Trap.TransverseTrapFrequencyinHz;
+Trap.TrappingFrequency = (2*pi) *  0.534e+03;
+Trap.w0   = 25e-6;     % Beam waist
+PotentialType = 'Gaussian';
+%% Temperature induced broadening of velocity (momentum) distribution post adiabatic release by ramping down the HDT for horiontal compression in the VDT
+Wavelength = 1064e-9;                          % VDT wavelength
 Frequency  = 2*pi*SpeedOfLight/Wavelength;
 detuningD1 = 2*pi*SpeedOfLight*(1/CsD1lambda-1/Wavelength);
 detuningD2 = 2*pi*SpeedOfLight*(1/CsD2lambda-1/Wavelength);
-
-% Trap parameters
-Trap.k = 2*pi./Wavelength;
-Trap.w0   = 50e-6;                                  % Beam waist
-Trap.z_R  = pi.*(Trap.w0.^2)/Wavelength;            % Rayleigh length
-Trap.w = @(z) Trap.w0.*sqrt(1+((z./Trap.z_R).^2));  % Axial waist
-Trap.P = 500e-3;                                    % Beam power
-fOscD1 = 0.344;                                     % D1 Absorption oscillator strength
-fOscD2 = 0.714;                                     % Absorption oscillator strength
-potentialContributionD1 = (fOscD1*CsD1Gamma/(2*pi*SpeedOfLight/CsD1lambda)^3)*(1/detuningD1+(1/(detuningD1+2*Frequency)));
+k  = 2*pi./Wavelength;
+w0 = 50e-6;                                    % Beam waist
+P  = 70e-3;                                    % Beam power
+fOscD1 = 0.344;                                % D1 Absorption oscillator strength
+fOscD2 = 0.714;                                % Absorption oscillator strength
+potentialContributionD1 = (fOscD1*CsD1Gamma/(2*pi*SpeedOfLight/CsD1lambda)^3)*(1/detuningD1+(1/(detuningD1+2*Frequency))); 
 potentialContributionD2 = (fOscD2*CsD2Gamma/(2*pi*SpeedOfLight/CsD2lambda)^3)*(1/detuningD2+(1/(detuningD2+2*Frequency)));
-I0 = 2.*Trap.P./(pi.*(Trap.w0).^2);  % Single peak beam intensity, factor of 2 because two counter propagating beams
+I0 = 2.*P./(pi.*(w0).^2);  % Single peak beam intensity, factor of 2 because two counter propagating beams
 Imax = 2*I0; % Multiply another factor of 2 because of interference
-Trap.U0 = -(3*pi*SpeedOfLight^2*Imax/2)*(potentialContributionD1+potentialContributionD2);
-Trap.TransverseTrappingFrequencyinHz = (1/(2*pi)) *  sqrt(4*abs(Trap.U0)/(Cs133Mass*Trap.w0^2));
-Trap.TransverseTrappingFrequency = (2*pi) *  Trap.TransverseTrappingFrequencyinHz;
-Trap.TrappingPeriod = 1/Trap.TransverseTrappingFrequencyinHz;
-Trap.U0InTemperature = abs(Trap.U0)/BoltzmannConstant;
-Trap.U0InFreq = abs(Trap.U0)/PlanckConstant;
-%% Temperature induced broadening of velocity (momentum) distribution post adiabatic release by ramping down the HDT for horiontal compression in the VDT
-LongitudinalTrapFrequencyinHz = 56e+03; 
-Lambda                        = 866e-9; % HDT wavelength
-U0 = - 1e3 * PlanckConstant * LatticeProperties.estimateTrapDepthFromHeatingSidebandFreqDT1DT3(LongitudinalTrapFrequencyinHz*1e-3);
+U0 = -(3*pi*SpeedOfLight^2*Imax/2)*(potentialContributionD1+potentialContributionD2); % (eq. 1.22a Thesis alt)
+
+% TransverseTrappingFrequencyinHz = (1/(2*pi)) *  sqrt(4*abs(U0)/(Cs133Mass*w0^2)); % (eq. 1.46 Thesis W.Alt)
+% TransverseTrappingFrequency = (2*pi) *  TransverseTrappingFrequencyinHz; % (eq. 1.46 Thesis W.Alt)
+
+LongitudinalTrappingFrequencyinHz = sqrt(2*abs(U0)/(Cs133Mass*Wavelength^2)); % (eq. 1.45 Thesis W.Alt)
+LongitudinalTrappingFrequency = (2*pi) *  LongitudinalTrappingFrequencyinHz;  % (eq. 1.45 Thesis W.Alt)
+
 GroundStatePopulation = 0.9;
 
-RecoilEnergy = (PlanckConstantReduced * (2*pi/Lambda))^2 / (2*Cs133Mass);
+RecoilEnergy = (PlanckConstantReduced * (2*pi/Wavelength))^2 / (2*Cs133Mass);
 InitialTrapDepthInUnitsOfRecoilEnergy = abs(U0)/RecoilEnergy;
 FinalTrapDepthInUnitsOfRecoilEnergy = 5; 
 
+PowerAtTargetReleaseDepth = (((2 * FinalTrapDepthInUnitsOfRecoilEnergy * RecoilEnergy)/(3*pi * SpeedOfLight^2 * (potentialContributionD1+potentialContributionD2))) * (pi.*(w0).^2))/2;
+
 FractionOfInitialPotential = FinalTrapDepthInUnitsOfRecoilEnergy / InitialTrapDepthInUnitsOfRecoilEnergy;
-deltaE = PlanckConstantReduced * 2 * pi * LongitudinalTrapFrequencyinHz;
-initialTemperatureBeforeAdiabaticRampDown = -(7.24297e22 * deltaE) / log(1 - GroundStatePopulation);
-initialTemperature = sqrt(FractionOfInitialPotential) * initialTemperatureBeforeAdiabaticRampDown;
-%% Simulation of trajectory of an atom allowed to oscillate in the trap
+
+deltaE = PlanckConstantReduced * LongitudinalTrappingFrequency;
+initialTemperatureBeforeAdiabaticRampDown = -(7.24297e22 * deltaE) / log(1 - GroundStatePopulation);  % See sec. 2 of note for derivation:  https://www.evernote.com/shard/s124/nl/13819157/a7d81880-899b-426f-82e6-f8d10e6c094b
+initialTemperature = sqrt(FractionOfInitialPotential) * initialTemperatureBeforeAdiabaticRampDown; % See sec. 2 of note for derivation:  https://www.evernote.com/shard/s124/nl/13819157/a7d81880-899b-426f-82e6-f8d10e6c094b
+%% - sampling the position distribution
+tRes        = 20e-6;               % Resolution for the ODE solver (s)
+t0          = 0;                    % Starting time (s)
+tf          = 5e-3;                % Final time (s)
+tNumPoints  = floor(tf/tRes)+1;     % Number of sample points in time between t0 and tf
+tspan = linspace(t0,tf,tNumPoints); % Solver calculates atom position for each of these timesteps in this time array
 NumberOfAtoms = 10000;
-positions = linspace(-60e-6,60e-6,NumberOfAtoms);
-% ProbDF  = GaussianDistribution(0, (20e-6)^2, positions);
-% ProbDF  = HigherOrderGaussianDistribution(20e-6, (12e-6)^2, 2, positions);
-ProbDF  = MirroredFlatTopGaussianDistribution(20e-6, (12e-6)^2, positions);
-%initialPositions  = randn(NumberOfAtoms,1).* 20e-6;
-InitialPositionDistribution = drawSamplesFromDistribution(NumberOfAtoms, positions, ProbDF); 
-% 
-figure(1)
+
+max_pos = 10e-6;
+positions = linspace(-max_pos,max_pos,NumberOfAtoms);
+TypeOfPositionDistribution = 'Gaussian';
+
+switch TypeOfPositionDistribution
+    case 'InBuiltNormal'
+        initialPositions  = randn(NumberOfAtoms,1).* 20e-6;
+    case 'Gaussian'
+        ProbDF  = GaussianDistribution(0, (3e-6)^2, positions); % Mean, Variance, Position Vector
+        initialPositions = drawSamplesFromDistribution(NumberOfAtoms, positions, ProbDF); 
+    case 'HigherOrderGaussian'
+        ProbDF  = HigherOrderGaussianDistribution(20e-6, (12e-6)^2, 2, positions); % Mean, Variance, Position Vector
+        initialPositions = drawSamplesFromDistribution(NumberOfAtoms, positions, ProbDF); 
+    case 'MirroredFlatTopGaussian' 
+        ProbDF  = MirroredFlatTopGaussianDistribution(10e-6, (6e-6)^2, positions); % Mean, Variance, Position Vector
+        initialPositions = drawSamplesFromDistribution(NumberOfAtoms, positions, ProbDF); 
+end
+
+fh = DQSIMhelper.getFigureByTag('InitialPositionDistribution');
+set(fh,'Name','Initial position distribution of atoms');
 clf
 NumberOfBins = 100;
-histogram(InitialPositionDistribution*1e6,NumberOfBins,'DisplayName','Sampled')
+histogram(initialPositions*1e6,NumberOfBins,'DisplayName','Sampled')
 hold on
 plot(positions*1e6, ProbDF*NumberOfAtoms*numel(ProbDF)/NumberOfBins,'LineWidth',3,'DisplayName','Predicted')
-xlim([-round(max(InitialPositionDistribution(:))*1e6,1), round(max(InitialPositionDistribution(:))*1e6,1)])
-sgtitle('Gaussian', 'FontSize', 14)
+xlim([-round(max(initialPositions(:))*1e6,1), round(max(initialPositions(:))*1e6,1)])
+sgtitle(['Type of distribution: ' TypeOfPositionDistribution], 'FontSize', 14)
 %sgtitle('(Mirrored) Flat Top Gaussian', 'FontSize', 14)
 legend('FontSize', 14)
+%% - sampling the velocity distribution
 
-max_vel = 10e-3;
+max_vel = 10e-3; % m/s
 velocities = 0:(max_vel/(NumberOfAtoms-1)):max_vel;
-ProbDF     = MaxwellBoltzmannDistribution(initialTemperature, velocities);
-%ProbDF     = GaussianDistribution(10e-4, 2e-7, velocities);
-%ProbDF     = UniformDistribution(0, 8e-03, velocities);
-InitialVelocityDistribution = drawSamplesFromDistribution(NumberOfAtoms, velocities, ProbDF);
+TypeOfVelocityDistribution = 'Maxwell-Boltzmann';
 
-signflips = (-1) .* (rand(length(InitialVelocityDistribution),1) > 0.5);
+switch TypeOfVelocityDistribution
+    case 'Zero'
+        initialVelocities  = 0;
+    case 'InBuiltNormal'
+        initialVelocities  = randn(NumberOfAtoms,1).* 20e-6;
+    case 'Uniform'
+        ProbDF     = UniformDistribution(0, 8e-03, velocities);
+        initialVelocities = drawSamplesFromDistribution(NumberOfAtoms, velocities, ProbDF);
+    case 'Gaussian' 
+        ProbDF     = GaussianDistribution(10e-4, 2e-7, velocities);
+        initialVelocities = drawSamplesFromDistribution(NumberOfAtoms, velocities, ProbDF);
+    case 'Maxwell-Boltzmann' 
+        ProbDF     = MaxwellBoltzmannDistribution(initialTemperature, velocities);
+        initialVelocities = drawSamplesFromDistribution(NumberOfAtoms, velocities, ProbDF);
+end
+
+signflips = (-1) .* (rand(length(initialVelocities),1) > 0.5);
 signflips(signflips == 0) = 1;
-InitialVelocityDistribution = InitialVelocityDistribution .* signflips;
+initialVelocities = initialVelocities .* signflips;
 
-figure(2)
+fh = DQSIMhelper.getFigureByTag('InitialVelocityDistribution');
+set(fh,'Name','Initial velocity distribution of atoms');
+
 clf
 NumberOfBins = 100;
-histogram(InitialVelocityDistribution*1e3,NumberOfBins,'DisplayName','Sampled')
+histogram(initialVelocities*1e3,NumberOfBins,'DisplayName','Sampled')
 PDFForDisp = ProbDF*NumberOfAtoms*numel(ProbDF)/NumberOfBins;
 PDFForDisp = horzcat(flip(PDFForDisp), PDFForDisp);
 VelocityRange = horzcat(-flip(velocities*1e3), velocities*1e3);
 hold on
 plot(VelocityRange, PDFForDisp,'LineWidth',3,'DisplayName','Predicted')
 %xlim([0, round(max(initialVelocities(:))*1e3,1)])
-sgtitle(['Maxwell-Boltzmann for T = ' num2str(initialTemperature*1e9) ' nK'], 'FontSize', 14)
+sgtitle(['Velocity distribution: ' TypeOfVelocityDistribution ' with T = ' num2str(round(initialTemperature*1e9*1E1)/1E1) ' nK'], 'FontSize', 14)
 %sgtitle('(Mirrored) Flat Top Gaussian', 'FontSize', 14)
 legend('FontSize', 14)
 
-%%
+%% - perform the simulation
+
 if ~DebugMode
-    tRes        = 5e-6;                                 % Resolution for the ODE solver (s)
-    t0          = 0;                                    % Starting time (s)
-    WaitTime    = 0.7e-3;                               % Final time (s)
-    tNumPoints  = floor(WaitTime/tRes)+1;               % Number of sample points in time between t0 and tf
-    tspan = linspace(t0,WaitTime,tNumPoints);           % Solver calculates atom position for each of these timesteps in this time array
-    CompressionCycles = 2;                              % CompressionCycles
-    
-    AllPositionsOverTime = zeros(CompressionCycles * tNumPoints, NumberOfAtoms);
-    AllVelocitiesOverTime = zeros(CompressionCycles * tNumPoints, NumberOfAtoms);
-    for idx = 1:CompressionCycles
-        [CurrentPositionDistribution,CurrentVelocityDistribution] = Solver(tRes, t0, WaitTime, Trap, InitialPositionDistribution, InitialVelocityDistribution);
-        AllPositionsOverTime((idx-1)*size(CurrentPositionDistribution,1)+1:(idx*size(CurrentPositionDistribution,1)),:) = CurrentPositionDistribution;  
-        AllVelocitiesOverTime((idx-1)*size(CurrentVelocityDistribution,1)+1:(idx*size(CurrentVelocityDistribution,1)),:) = CurrentVelocityDistribution;  
-        InitialPositionDistribution = CurrentPositionDistribution(end,:);
-        InitialVelocityDistribution = InitialVelocityDistribution(randperm(numel(InitialVelocityDistribution)));
+    Xres = zeros(length(tspan),NumberOfAtoms);
+    Vres = zeros(length(tspan),NumberOfAtoms);
+    progressbar  = parforNotifications();
+    progressbar.PB_start(NumberOfAtoms,'Message',['Computing evolution for ' num2str(NumberOfAtoms,'%.0f') ' atoms:']);
+    parfor Index = 1:NumberOfAtoms
+        if ~isscalar(initialVelocities)
+            InitialConditions = [initialPositions(Index) initialVelocities(Index)]; % [initial position, initial velocity]
+        else
+            InitialConditions = [initialPositions(Index) initialVelocities];
+        end
+        [res] = ode5(@(t, x) odefcn(t, x, Trap, PotentialType), tspan, InitialConditions);
+        Xres(:,Index) = res(:,1);
+        Vres(:,Index) = res(:,2);
+        progressbar.PB_iterate();
+    end
+    clear Index
+    %% Save
+    if DoSave
+        prompt = 'Save trajectories? Enter "true" or "false": ';
+        SaveTrajectories = input(prompt);
+        if isempty(SaveTrajectories)
+            SaveTrajectories = false;
+        end
+        if SaveTrajectories
+            save(['Trajectories_N' num2str(NumberOfAtoms) '.mat'],'tspan','Xres')
+            save(['Trajectories_N' num2str(NumberOfAtoms) '.mat'],'Vres', '-append')
+        end
     end
 end
 %% Plotting
@@ -120,57 +178,61 @@ if DebugMode
 else
     PlotPotential                                  = false;
     PlotSampling                                   = false;
-    PlotTrajectories                               = false;
+    PlotTrajectories                               = true;
     PlotEnvelopesAndOptimalWaitingTimes            = false;
     PlotPhaseSpaceEvolution                        = true;
-    PlotRMSpread                                   = false;
-    PlotPhaseSpaceAnalysis                         = false;
+    PlotRMSpread                                   = true;
+    PlotPhaseSpaceAnalysis                         = true;
 end
 
 if PlotPotential
-    plotPotential(Wavelength, Trap) 
+    plotPotential(Trap, PotentialType) 
 end
 if PlotSampling
     plotSampling(NumberOfAtoms, initialTemperature, velocities)
 end
 if PlotTrajectories
-    TimeForFullCompression = plotTrajectories(NumberOfAtoms, Trap, tspan, AllPositionsOverTime);
+    TimeForFullCompression = plotTrajectories(NumberOfAtoms, Trap, tspan, Xres);
     %plotQuarterPeriods(Trap, initialPositions, TimeForFullCompression)
 end   
 if PlotEnvelopesAndOptimalWaitingTimes
     plotEnvelopesAndOptimalWaitingTimes(tspan, Xres, 50)
 end
+
 if PlotPhaseSpaceEvolution
     NumberOfBins = 100;
-    plotPhaseSpaceEvolution(NumberOfAtoms, Trap, GroundStatePopulation, FinalTrapDepthInUnitsOfRecoilEnergy, initialTemperature, t0, tNumPoints, WaitTime, CompressionCycles, AllPositionsOverTime, AllVelocitiesOverTime, NumberOfBins)
+    plotPhaseSpaceEvolution(NumberOfAtoms, Trap, PotentialType, GroundStatePopulation, FinalTrapDepthInUnitsOfRecoilEnergy, initialTemperature, tNumPoints, tspan, Xres, Vres, NumberOfBins)
 end
 if PlotRMSpread
    plotRMSSpreadEvolution(tspan, Xres, NumberOfAtoms, FractionOfInitialPotential, GroundStatePopulation, initialTemperature)
 end 
 
 if PlotPhaseSpaceAnalysis
-    MaxHoldTime = 3; %in ms
-    plotPhaseSpaceAnalysis(Trap, NumberOfAtoms, tspan, Xres, Vres, initialTemperature, MaxHoldTime)
+    MaxHoldTime = 5; %in ms
+    plotPhaseSpaceAnalysis(NumberOfAtoms, tspan, Xres, Vres, initialTemperature, MaxHoldTime)
 end
 %% Plotting functions
-function plotPotential(Wavelength, Trap)
+function plotPotential(Trap, PotentialType)
     PhysicsConstants;
-    x = -200*Wavelength:1e-2*Wavelength:200*Wavelength;
-    figure(1)
+    x = linspace(-1*Trap.w0,1*Trap.w0,1000);
+    figure(1);
     clf
     colours = {[0, 0.4470, 0.7410],[0.8500, 0.3250, 0.0980],[0.9290, 0.6940, 0.1250],[0.4940, 0.1840, 0.5560],[0.4660, 0.6740, 0.1880], [0.6350, 0.0780, 0.1840]};
     set(gcf, 'defaultAxesColorOrder', [[0 0 0];[0 0 0]]);
-    Potential = @(x,Trap) Trap.U0 .* exp(-2 *((x/Trap.w0).^2));
     %plot(x*1e6,-cumsum(force(x,Trap)), 'Color', colours{2}, 'LineWidth', 2) % plot the potential
-    plot(x*1e6, (Potential(x,Trap)./BoltzmannConstant) .*1e6, 'Color', colours{2}, 'LineWidth', 2) % plot the potential
+    plot(x*1e6, (potential(x,Trap, PotentialType)./BoltzmannConstant) .*1e6, 'Color', colours{2}, 'LineWidth', 2) % plot the potential
+    hold on
+    plot(x*1e6, (potential(x,Trap, 'Gaussian')./BoltzmannConstant) .*1e6, 'Color', colours{2}, 'LineWidth', 2) % plot the potential
     xlabel('Position (um)','FontSize', 14)
     ylabel('Potential (uK)','FontSize', 14)
     xlim([min(x) max(x)]*1e6)
     yyaxis right
-    plot(x*1e6,force(x,Trap)*1e23, 'Color', colours{4}, 'LineWidth', 2) % plot the potential
+    plot(x*1e6,force(x,Trap,PotentialType)*1e23, 'Color', colours{4}, 'LineWidth', 2) % plot the potential
+    hold on
+    plot(x*1e6,force(x,Trap,'Gaussian')*1e23, 'Color', colours{4}, 'LineWidth', 2) % plot the potential
     ylabel('Force (x 10^{-23} N)','FontSize', 14)
     legend({'Potential', 'Force'},'FontSize', 14)
-    sgtitle(['Vertical Dipole Trap of depth = ' num2str(abs(Trap.U0InTemperature*1e6),'%.2f') ' uK'])
+    sgtitle(['Dipole Trap of depth = ' num2str(abs(Trap.U0InTemperature*1e6),'%.2f') ' uK'])
 end
 function plotSampling(NumberOfAtoms, initialTemperature, velocities)
 % - plot Distribution
@@ -214,18 +276,18 @@ colours = {[0, 0.4470, 0.7410],[0.8500, 0.3250, 0.0980],[0.9290, 0.6940, 0.1250]
 for Index = 1:NumberOfAtoms
     plot(tspan*1e3, Xres(:,Index).*1e6, 'HandleVisibility', 'Off');
     hold on
-    %ZC = findAllZeroCrossings(tspan*1e3,Xres(:,Index).*1e6);
-    %TimeForFullCompression(Index) = ZC(1);
+    ZC = findAllZeroCrossings(tspan*1e3,Xres(:,Index).*1e6);
+    TimeForFullCompression(Index) = ZC(1);
 end
-%MeanTime = mean(TimeForFullCompression);
-%line([min(TimeForFullCompression) min(TimeForFullCompression)],[-10 10],'Color',colours{1},'LineStyle','--')
-%line([MeanTime MeanTime],[-10 10],'Color',colours{1},'LineWidth',1.5)
-%line([max(TimeForFullCompression) max(TimeForFullCompression)],[-10 10],'Color',colours{1},'LineStyle','--')
+MeanTime = mean(TimeForFullCompression);
+line([min(TimeForFullCompression) min(TimeForFullCompression)],[-10 10],'Color',colours{1},'LineStyle','--')
+line([MeanTime MeanTime],[-10 10],'Color',colours{1},'LineWidth',1.5)
+line([max(TimeForFullCompression) max(TimeForFullCompression)],[-10 10],'Color',colours{1},'LineStyle','--')
 clear Index
 sgtitle(['Trajectory of ' num2str(NumberOfAtoms) ' atoms at different starting positions in the VDT of depth: ' num2str(abs(Trap.U0InTemperature*1e6),'%.2f') ' uK']);
 ylabel('Position (um)','FontSize', 14)
 xlabel('Time (ms)','FontSize', 14)
-%legend({['Minimum quarter period (' num2str(min(TimeForFullCompression),'%.3f') ' ms)'], ['Mean quarter period (' num2str(MeanTime,'%.3f') ' ms)'], ['Maximum quarter period (' num2str(max(TimeForFullCompression),'%.3f') ' ms)']}, 'FontSize', 14)
+legend({['Minimum quarter period (' num2str(min(TimeForFullCompression),'%.3f') ' ms)'], ['Mean quarter period (' num2str(MeanTime,'%.3f') ' ms)'], ['Maximum quarter period (' num2str(max(TimeForFullCompression),'%.3f') ' ms)']}, 'FontSize', 14)
 grid on
 hold off
 sgtitle(['Trajectory of ' num2str(NumberOfAtoms) ' atoms at different starting positions in the VDT of depth: ' num2str(abs(Trap.U0InTemperature*1e6),'%.2f') ' uK']);
@@ -290,20 +352,27 @@ function plotEnvelopesAndOptimalWaitingTimes(tspan, Xres, UptoInitPos)
     ylabel('Optimal Waiting Time (ms)','FontSize', 14)
     sgtitle('Optimal waiting times for different capture ranges');
 end
-function plotPhaseSpaceEvolution(NumberOfAtoms, Trap, GroundStatePopulation, FinalTrapDepthInUnitsOfRecoilEnergy, initialTemperature, t0, tNumPoints, WaitTime, CompressionCycles, Xres, Vres, NumberOfBins)
-    figure(7)
+function plotPhaseSpaceEvolution(NumberOfAtoms, Trap, PotentialType, GroundStatePopulation, FinalTrapDepthInUnitsOfRecoilEnergy, initialTemperature, tNumPoints, tspan, Xres, Vres, NumberOfBins)
+    
     clf
     PhysicsConstants;
-    set(gcf, 'Units', 'normalized');
-    set(gcf, 'OuterPosition', [0.5 0.5 0.25 0.45]);
+    fh = DQSIMhelper.getFigureByTag('PhaseSpaceEvolution');
+    fh.Name = 'Phase-Space Evolution';
+    fh.Units = 'pixel';
+    FigureSize = fh.Position;
+    fh.Position = [FigureSize([1,2]) 760 600];
     colours = {[0, 0.4470, 0.7410],[0.8500, 0.3250, 0.0980],[0.9290, 0.6940, 0.1250],[0.4940, 0.1840, 0.5560],[0.4660, 0.6740, 0.1880], [0.6350, 0.0780, 0.1840]};
     F = struct('cdata',[],'colormap',[]);
     frame = 0;
-    Potential = @(x,Trap) Trap.U0 .* exp(-2 *((x/Trap.w0).^2));
     Pos = linspace(-max(Xres(:)), max(Xres(:)), size(Xres,2));
-    EscapeVelocities = sqrt(2.*abs(Potential(Pos, Trap))./Cs133Mass)*1e3;
-    tNumPoints   = CompressionCycles * tNumPoints;
-    tspan        = linspace(t0,CompressionCycles * WaitTime,tNumPoints);
+    EscapeVelocities = sqrt(2.*abs(potential(Pos, Trap, PotentialType))./Cs133Mass)*1e3;
+    if strcmp(PotentialType, 'Harmonic')
+        [~, idx1] = min(abs(EscapeVelocities(1:length(EscapeVelocities)/2)));
+        [~, idx2] = min(abs(EscapeVelocities(length(EscapeVelocities)/2:end)));
+        Pos = Pos(idx1:length(EscapeVelocities)/2+idx2);
+        EscapeVelocities = EscapeVelocities(idx1:length(EscapeVelocities)/2 +idx2);
+    end
+    
     for Time = 1:5:tNumPoints
         positions  = Xres(Time,:).*1e6;
         velocities = Vres(Time,:).*1e3;
@@ -325,19 +394,13 @@ function plotPhaseSpaceEvolution(NumberOfAtoms, Trap, GroundStatePopulation, Fin
         sb2 = subplot(4,4,[2.15,12]);
         plot2DHistogram(positions(:),  velocities(:), ...
             'nbins', NumberOfBins, ...
-            'PositionLimits', [-round(max(Xres(:))*1e6, 1) round(max(Xres(:))*1e6, 1)],...
-            'VelocityLimits', [-round(max(Vres(:))*1e3, 1) round(max(Vres(:))*1e3, 1)],...
             'CountDensity', false);
         colorbar
+%         pbaspect([1 1 1]);
         hold on
         plot(Pos*1e6, EscapeVelocities, 'Color', [1 1 1], 'LineStyle', '--')
         plot(Pos*1e6, -EscapeVelocities, 'Color', [1 1 1], 'LineStyle', '--')
-        text(round(min(Xres(:))*1e6, 1)+5, -round(max(Vres(:))*1e3, 1)+5, ['Time : ' num2str(round(tspan(Time)*1e3, 1)) ' ms'], 'Color', [1 1 1],'FontSize', 14)
-        for idx = 1:CompressionCycles
-            if tspan(Time) >= (idx-1)*WaitTime && tspan(Time) <= idx*WaitTime
-                text(round(max(Xres(:))*1e6, 1)-20, -round(max(Vres(:))*1e3, 1)+5, ['Run : ' num2str(idx)], 'Color', [1 1 1],'FontSize', 14)
-            end
-        end
+        text(round(min(Xres(:))*1e6, 1)+2, -round(max(Vres(:))*1e3, 1)+5, ['Time : ' num2str(tspan(Time)*1e3) ' ms'], 'Color', [1 1 1], 'FontSize', 14)
         xlabel('Position (\mum)','FontSize', 14)
         ylabel('Velocity (mm/s)','FontSize', 14)
         xlim([-round(max(Xres(:))*1e6, 1) round(max(Xres(:))*1e6, 1)])
@@ -353,7 +416,8 @@ function plotPhaseSpaceEvolution(NumberOfAtoms, Trap, GroundStatePopulation, Fin
 %         [pdfey,pdfex] = ksdensity(positions(:));
 %         plot(pdfex, (pdfey./max(pdfey)).*MaxValue, 'Color', colours{6}, 'LineStyle', '--');
         set(sb3, 'Box', 'off', 'Color', 'none')
-        set(sb3, 'xlim', [-round(max(Xres(:))*1e6, 1) round(max(Xres(:))*1e6, 1)])
+        %set(sb3, 'xlim', [-round(max(Xres(:))*1e6, 1) round(max(Xres(:))*1e6, 1)])
+        set(sb3, 'xlim', [-20 20])
         set(sb3, 'ylim', [0 MaxValue])
         hold off
         sgtitle(['Ground State Pop. = ' num2str(GroundStatePopulation) ' --> (Uniform) Initial Temperature = ' num2str(initialTemperature*1e6, '%.1f') ' \muK; Release Depth = ' num2str(FinalTrapDepthInUnitsOfRecoilEnergy) ' E_R']);
@@ -361,6 +425,7 @@ function plotPhaseSpaceEvolution(NumberOfAtoms, Trap, GroundStatePopulation, Fin
         F (frame) = getframe (gcf);
         drawnow
     end
+    
     clear Index
     hold off
     writerObj = VideoWriter (['PhaseEvolution_N' num2str(NumberOfAtoms) '.avi']);
@@ -386,7 +451,7 @@ function plotRMSSpreadEvolution(tspan, Xres, NumberOfAtoms, FractionOfInitialPot
         RMSSpread(idx) = rms(Xres(idx,:));
     end
     plot(tspan*1e3, RMSSpread.*1e6, 'Color',colours{6})
-    ylim([0 max(RMSSpread)*1e6])
+    ylim([0 max(RMSSpread)*1e6]+1)
     text(1, min(RMSSpread)*1e6 -10, ['Number of Atoms:' num2str(NumberOfAtoms)],'FontSize', 14)
     text(1, min(RMSSpread)*1e6 -12, ['GS Population:' num2str(100*GroundStatePopulation) '%'],'FontSize', 14)
     text(1, min(RMSSpread)*1e6 -14, ['Initial Temperature (AFTER adiabatic release):' num2str(initialTemperature*1e9) ' nK'],'FontSize', 14)
@@ -475,7 +540,7 @@ for kk = 1:3
 end
 sgtitle('Sampling from a Distribution','FontSize', 18)
 end
-function plotPhaseSpaceAnalysis(Trap, NumberOfAtoms, tspan, Xres, Vres, initialTemperature, MaxHoldTime)
+function plotPhaseSpaceAnalysis(NumberOfAtoms, tspan, Xres, Vres, initialTemperature, MaxHoldTime)
     PhysicsConstants;
     figure(10)
     clf
@@ -647,34 +712,54 @@ function plot2DHistogram(x,y,varargin)
     %hold off	
 end
 %% helper functions
-function ret = odefcn(~, x, Trap)
+function ret = odefcn(~, x, Trap, varargin)
 % ret = odefcn(~, x, Trap) implements the ODE for the simulation
     PhysicsConstants;
+    narginchk(3,4)
+    
     ret = zeros(2,1);
     ret(1) = x(2); % Velocity
-    ret(2) = force(x(1), Trap)/Cs133Mass;
+    
+    if nargin <= 3
+        ret(2) = force(x(1), Trap)/Cs133Mass;
+    else
+        Type = varargin{1};
+        ret(2) = force(x(1), Trap, Type)/Cs133Mass;
+    end
+    
 end % - ODE to solve
-function ret = force(x, Trap)
+function ret = force(x, Trap, varargin)
 % ret = force(x, Trap) calculates the force [N] that the dipole-potential 
 % exerts on a CS133-atom at distance x [m] from its center 
-    ret = Trap.U0 * 4 * x/(Trap.w0.^2) .* exp(-2 *((x/Trap.w0).^2));
-end     % - Dipole force given a Gaussian potential  
-function [Xres, Vres] = Solver(tRes, t0, tf, Trap, AtomPositionDistribution, AtomVelocityDistribution)
-    tNumPoints  = floor(tf/tRes)+1;     % Number of sample points in time between t0 and tf
-    tspan = linspace(t0,tf,tNumPoints); % Solver calculates atom position for each of these timesteps in this time array
-    NumberOfAtoms = length(AtomPositionDistribution);
-    Xres = zeros(length(tspan),NumberOfAtoms);
-    Vres = zeros(length(tspan),NumberOfAtoms);  
-    progressbar  = parforNotifications();
-    progressbar.PB_start(NumberOfAtoms,'Message',['Computing evolution for ' num2str(NumberOfAtoms,'%.0f') ' atoms:']);
-    parfor Index = 1:NumberOfAtoms
-        InitialConditions = [AtomPositionDistribution(Index) AtomVelocityDistribution(Index)]; % [initial position, initial velocity]
-        [res] = ode5(@(t, x) odefcn(t, x, Trap), tspan, InitialConditions);
-        Xres(:,Index) = res(:,1);
-        Vres(:,Index) = res(:,2);
-        progressbar.PB_iterate();
+    PhysicsConstants;
+    narginchk(2,3)
+    if nargin == 2
+        Type = 'Gaussian';
+    else
+        Type = varargin{1};
     end
-    clear Index
+    switch Type
+        case 'Harmonic'
+            ret = - Cs133Mass * Trap.TrappingFrequency^2 * x;
+        case 'Gaussian'
+            ret = Trap.U0 * 4 * x/(Trap.w0.^2) .* exp(-2 *((x/Trap.w0).^2));
+    end  
+end     % - Dipole force given a Gaussian potential  
+function ret = potential(x, Trap, varargin)
+    PhysicsConstants;
+    PhysicsConstants;
+    narginchk(2,3)
+    if nargin == 2
+        Type = 'Gaussian';
+    else
+        Type = varargin{1};
+    end
+    switch Type
+        case 'Harmonic'
+            ret = Trap.U0 + 0.5 * Cs133Mass * Trap.TrappingFrequency^2 .* x.^2;
+        case 'Gaussian'
+            ret = Trap.U0 .* exp(-2 *((x/Trap.w0).^2));
+    end   
 end
 function ret = UniformDistribution(a, b, x)
     ret = zeros(length(x),1);
