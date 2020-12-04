@@ -33,7 +33,7 @@ switch Analyzer.CurrentMeasurementName
         % - Initial Fit parameter
         peak_brightness_fit_guess = [0.1; 0; 1;  0; 1.4]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
         peak_brightness_fixed_params = [nan,nan,nan,nan,nan];
-    case 'meas20200803T102411' %% 2020-08-03 
+    case 'meas20200803T102411' %% 2020-08-03
         % - VDT Position
         VDT_Position  = [253 279];
         spreadratio_fit_guess = [0.05; 0;  0;  0; 0.515]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
@@ -41,7 +41,7 @@ switch Analyzer.CurrentMeasurementName
         % - Initial Fit parameter
         peak_brightness_fit_guess = [0.1; 0; 1;  0; 1.4]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
         peak_brightness_fixed_params = [nan,nan,nan,nan,nan];
-    otherwise 
+    otherwise
         % - VDT Position
         VDT_Position = Measurements.Measurement.getDefaultSettings.Origin;
         % - Initial Fit parameter
@@ -56,7 +56,7 @@ switch AnalysisMethod
     case 'marginals'
         marginalAnalysis(meas,Analyzer);
 end
-%% - do plots 
+%% - do plots
 if true
     %% - PlotAnalysisOfFWHMRatio
     if DoPlotAnalysisOfFWHMRatio
@@ -85,7 +85,7 @@ CorrectedAverageImages = AverageImages-AverageBackGroundImageFull;
 CorrectedAverageImages = bsxfun(@times,CorrectedAverageImages,reshape(EtaloningMask,1,1,ImageArraySize(end-1),ImageArraySize(end)));
 %% - Analyze by plotting an iso-ring around a point
 Ratios_Spread = zeros(1,size(CorrectedAverageImages,1));
-Ratios_PeakIntensities = zeros(1,size(CorrectedAverageImages,1)); 
+Ratios_PeakIntensities = zeros(1,size(CorrectedAverageImages,1));
 %%
 [~,~,~,~,RSquared] = FluoImageAnalysis.ImageAnalysis.getPosition(zeros(489),'Origin',VDT_Position,'Units','um');
 
@@ -183,7 +183,7 @@ for Run = 1:size(CorrectedAverageImages,1)
     plot(win(4), 0, 0, 'o', 'MarkerSize', 3, 'MarkerEdgeColor', 'r','MarkerFaceColor', 'r');
     colorbar(win(4))
     title(win(4), 'Before compression')
-    
+
     Ratios_PeakIntensities(Run) = final_peakint/initial_peakint;
     plot(win(3), meas.analysisData.MWSpec.xvals(Run), Ratios_PeakIntensities(Run), '*','MarkerSize',3,...
         'MarkerEdgeColor',colours{6},...
@@ -197,7 +197,7 @@ for Run = 1:size(CorrectedAverageImages,1)
     set(get(win(3),'XLabel'), 'String', 'Wait Time \mus','FontSize',16);
     set(get(win(3),'YLabel'), 'String', 'Ratio','FontSize',16);
     legend(win(3), {'Peak Intensity - Initial:Final'}, 'Location', 'northeast','FontSize',10);
-    
+
     imagesc(win(5),xvals,yvals, flipud(SecondImage));
     set(win(5), 'xlim', [min(xvals) max(xvals)]);
     set(win(5), 'ylim', [min(yvals) max(yvals)]);
@@ -223,7 +223,7 @@ for Run = 1:size(CorrectedAverageImages,1)
     end
 end
 end
-function [Ratios_Spread, spread_errors, Ratios_PeakIntensities, peakint_errors] = stripAnalysis(meas, VDT_Position, Analyzer)  
+function [Ratios_Spread, spread_errors, Ratios_PeakIntensities, peakint_errors] = stripAnalysis(meas, VDT_Position, Analyzer)
 global colours
 %% - Get and correct average images
 [AverageImages,~,AverageBackGroundImageFull] = meas.getAverageImages;
@@ -320,7 +320,7 @@ for Run = 1:size(CorrectedAverageImages,1)
     set(get(win(2),'XLabel'), 'String', 'Hold Time \mus','FontSize',16);
     set(get(win(2),'YLabel'), 'String', 'Ratio','FontSize',16);
     legend(win(2), {'Spread - Final:Initial'}, 'Location', 'northeast','FontSize',10);
-    
+
     [xvals,yvals,~,~,~] = FluoImageAnalysis.ImageAnalysis.getPosition(zeros(49*10),'Origin', VDT_Position,'pixelsPerLatticeSite',1.7);
     imagesc(win(4),xvals,yvals, flipud(FirstImage));
     set(win(4), 'xlim', [min(xvals) max(xvals)]);
@@ -329,7 +329,7 @@ for Run = 1:size(CorrectedAverageImages,1)
     plot(win(4), 0, 0, 'o', 'MarkerSize', 3, 'MarkerEdgeColor', 'r','MarkerFaceColor', 'r');
     colorbar(win(4))
     title(win(4), 'Before compression')
-    
+
     Ratios_PeakIntensities(Run) = final_peakint/initial_peakint;
     plot(win(3), meas.analysisData.MWSpec.xvals(Run), Ratios_PeakIntensities(Run), '*','MarkerSize',3,...
         'MarkerEdgeColor',colours{6},...
@@ -342,7 +342,7 @@ for Run = 1:size(CorrectedAverageImages,1)
     set(get(win(3),'XLabel'), 'String', 'Hold Time \mus','FontSize',16);
     set(get(win(3),'YLabel'), 'String', 'Ratio','FontSize',16);
     legend(win(3), {'Peak Intensity - Final:Initial'}, 'Location', 'northeast','FontSize',10);
-    
+
     imagesc(win(5),xvals,yvals, flipud(SecondImage));
     set(win(5), 'xlim', [min(xvals) max(xvals)]);
     set(win(5), 'ylim', [min(yvals) max(yvals)]);
@@ -351,7 +351,7 @@ for Run = 1:size(CorrectedAverageImages,1)
     plot(win(5), 0, 0, 'o', 'MarkerSize', 3, 'MarkerEdgeColor', 'r','MarkerFaceColor', 'r');
     colorbar(win(5))
     title(win(5), 'After compression')
-    
+
     % - save
     % - assert SaveString is set
     assert(~isempty(Analyzer.SaveString),...
@@ -398,7 +398,7 @@ for Run = 1:size(CorrectedAverageImages,1)
     [MaxValue,~] = max(Ymarginal(:));
     [MinValue,~] = min(Ymarginal(:));
     Ymarginal = (Ymarginal - MinValue) / (MaxValue-MinValue);
-    
+
     sb1 = subplot(8,8,[1,17]);
     plot(xvals, Ymarginal(:), 'LineStyle', '-.', 'Color', colours{2});
     set(sb1, 'Box', 'off', 'Color', 'none')
@@ -406,9 +406,9 @@ for Run = 1:size(CorrectedAverageImages,1)
     set(sb1, 'ylim', [0 1])
     set(sb1, 'XDir', 'reverse')
     camroll(sb1,90)
-    
+
     sb2 = subplot(8,8,[2.3,20.5]);
-    
+
     imagesc(xvals,yvals, FirstImage);
     xlim([min(xvals) max(xvals)]);
     ylim([min(yvals) max(yvals)]);
@@ -418,24 +418,24 @@ for Run = 1:size(CorrectedAverageImages,1)
     %xlim([])
     %ylim([])
     grid on
-    
+
     Xmarginal = sum(FirstImage, 1);
     [MaxValue,~] = max(Xmarginal(:));
     [MinValue,~] = min(Xmarginal(:));
     Xmarginal = (Xmarginal - MinValue) / (MaxValue-MinValue);
-    
+
     sb3 = subplot(8,8,[26.3,27.8], 'color', 'none');
     plot(xvals, Xmarginal(:), 'LineStyle', '-.', 'Color', colours{6});
     set(sb3, 'Box', 'off', 'Color', 'none')
     set(sb3, 'xlim', [min(xvals) max(xvals)])
     set(sb3, 'ylim', [0 1])
-    
+
     %%
     Ymarginal = sum(SecondImage, 2);
     [MaxValue,~] = max(Ymarginal(:));
     [MinValue,~] = min(Ymarginal(:));
     Ymarginal = (Ymarginal - MinValue) / (MaxValue-MinValue);
-    
+
     sb1 = subplot(8,8,[33,49]);
     plot(xvals, Ymarginal(:), 'LineStyle', '-.', 'Color', colours{2});
     set(sb1, 'Box', 'off', 'Color', 'none')
@@ -443,9 +443,9 @@ for Run = 1:size(CorrectedAverageImages,1)
     set(sb1, 'ylim', [0 1])
     set(sb1, 'XDir', 'reverse')
     camroll(sb1,90)
-    
+
     sb2 = subplot(8,8,[34.3,52.5]);
-    
+
     imagesc(xvals,yvals, SecondImage);
     xlim([min(xvals) max(xvals)]);
     ylim([min(yvals) max(yvals)]);
@@ -455,12 +455,12 @@ for Run = 1:size(CorrectedAverageImages,1)
     %xlim([])
     %ylim([])
     grid on
-    
+
     Xmarginal = sum(SecondImage, 1);
     [MaxValue,~] = max(Xmarginal(:));
     [MinValue,~] = min(Xmarginal(:));
     Xmarginal = (Xmarginal - MinValue) / (MaxValue-MinValue);
-    
+
     sb3 = subplot(8,8,[58.3,59.8], 'color', 'none');
     plot(xvals, Xmarginal(:), 'LineStyle', '-.', 'Color', colours{6});
     set(sb3, 'Box', 'off', 'Color', 'none')
@@ -558,7 +558,7 @@ f_h_main = findobj('Type', 'figure', 'Name', 'Main');
 f_h_main_subplots = get(f_h_main, 'Children');
 SpreadSubplot = f_h_main_subplots(9);
 cla(SpreadSubplot, 'reset');
-FigAxes = findobj('Parent',f_h,'Type','axes'); 
+FigAxes = findobj('Parent',f_h,'Type','axes');
 if ~isempty(FigAxes)
     FAxes = FigAxes(4);  % assume just the one axes
     copyobj(get(FAxes,'Children'), SpreadSubplot);
@@ -626,7 +626,7 @@ f_h_main = findobj('Type', 'figure', 'Name', 'Main');
 f_h_main_subplots = get(f_h_main, 'Children');
 PBSubplot = f_h_main_subplots(7);
 cla(PBSubplot, 'reset');
-FigAxes = findobj('Parent',f_h,'Type','axes'); 
+FigAxes = findobj('Parent',f_h,'Type','axes');
 if ~isempty(FigAxes)
     FAxes = FigAxes(2);  % assume just the one axes
     copyobj(get(FAxes,'Children'), PBSubplot);
@@ -718,9 +718,9 @@ end
 end
 %% - helperFunctions
 function [fit_params, fit_model]  = DampedCosFit(x,y, varargin)
-    
+
     p = inputParser;
-    
+
     addRequired(p,  'Xvals', @isnumeric);
     addRequired(p,  'Yvals', @isnumeric);
     addParameter(p, 'ParamGuess' , [max(y); 0.001; 2;  0; 0.8],  @isnumeric);
@@ -729,12 +729,12 @@ function [fit_params, fit_model]  = DampedCosFit(x,y, varargin)
     parse(p, x, y, varargin{:})
     x = p.Results.Xvals;
     y = p.Results.Yvals;
-    fit_guess = p.Results.ParamGuess; 
+    fit_guess = p.Results.ParamGuess;
     lb = p.Results.LowerBounds;
     ub = p.Results.UpperBounds;
     fit_model = @(p, x) p(1) .* exp(-p(2)*x) .* cos(2*pi*p(3).*x + p(4))  + p(5) ; % Function to fit
     fcn = @(p) sum((fit_model(p,x) - y').^2);                                      % Least-Squares cost function
-    %fit_params = fminsearch(fcn, fit_guess);                                      % Minimise Least-Squares    
+    %fit_params = fminsearch(fcn, fit_guess);                                      % Minimise Least-Squares
     fit_params = fmincon(fcn, fit_guess,[],[],[],[],lb,ub);
     RsqStatistic = 1 - (sum((y' - fit_model(fit_params,x)).^2) / sum((y' - mean(y)).^2));
     fit_params = [fit_params;RsqStatistic];
@@ -743,7 +743,7 @@ function [fit_params, fit_model]  = GaussFit(x,y, varargin)
     narginchk(2,3);
     fit_guess = [max(y);  0;  30;  0];
     if nargin==3
-       fit_guess = varargin{1};   
+       fit_guess = varargin{1};
     end
     fit_model = @(p, x) p(1) .* exp(-(x-p(2)).^2./(2*p(3)^2)) + p(4); % Function to fit
     fcn = @(p) sum((fit_model(p,x)' - y').^2);                        % Least-Squares cost function
@@ -755,7 +755,7 @@ function [fit_params, fit_model]  = HigherOrderGaussFit(x,y, varargin)
     narginchk(2,3);
     fit_guess = [max(y);  0;  30;  2;  0];
     if nargin==3
-       fit_guess = varargin{1};   
+       fit_guess = varargin{1};
     end
     fit_model = @(p, x) p(1) .* exp(-((x-p(2)).^2./(2*p(3)^2)).^p(4)) + p(5); % Function to fit
     fcn = @(p) sum((fit_model(p,x)' - y').^2);                        % Least-Squares cost function
@@ -767,7 +767,7 @@ function [fit_params, fit_model]  = FlatTopGaussFit(x,y, varargin)
     narginchk(2,3);
     fit_guess = [max(y);  0;  30;  0];
     if nargin==3
-       fit_guess = varargin{1};   
+       fit_guess = varargin{1};
     end
     fit_model = @(p, x) p(1) .* exp(-(max(x-p(2),0)).^2./(2*p(3)^2)) + p(4); % Function to fit
     fcn = @(p) sum((fit_model(p,x)' - y').^2);                        % Least-Squares cost function
@@ -779,7 +779,7 @@ function [fit_params, fit_model]  = SumOfGaussFit(x,y, varargin)
     narginchk(2,3);
     fit_guess = [max(y);  -25;  20;  500; max(y)-900;  18;  20;  500];
     if nargin==3
-       fit_guess = varargin{1};   
+       fit_guess = varargin{1};
     end
     fit_model = @(p, x) (p(1) .* exp(-(x-p(2)).^2./(2*p(3)^2)) + p(4)) + (p(5) .* exp(-(x-p(2)).^2./(2*p(7)^2)) + p(8)); % Function to fit
     fcn = @(p) sum((fit_model(p,x)' - y').^2);                        % Least-Squares cost function
@@ -791,7 +791,7 @@ function [fit_params, fit_model]  = VoigtFit(x,y,varargin)
     narginchk(2,3);
     fit_guess = [2, 2];
     if nargin==3
-       fit_guess = varargin{1};   
+       fit_guess = varargin{1};
     end
     voigt = @(pos,sigma,gamma) real(fadf((pos+1i*gamma)/(sqrt(2)*sigma)));
     p_fit = fminunc(@(p) sum((y-voigt(x,p(1),p(2))/voigt(0,p(1),p(2))*max(y)).^2),fit_guess,optimoptions(@fminunc,'Display','none'));
@@ -1021,27 +1021,27 @@ assert(numel(Point1)==2, 'Point1 must be a 2d-vector');
 
 if nargin ==3
     Distances = sqrt((XGrid-Point1(2)).^2+(YGrid-Point1(1)).^2);
-    
+
 elseif nargin ==4
     % - input handling
     assert(numel(Point2)==2, 'Point2 must be a 2d-vector');
     A = Point1(:)';
     B = Point2(:)';
-    
+
     NormalVector = ([0,-1;1,0]*(A-B)')'; NormalVector = NormalVector/norm(NormalVector); NormalVektorPoint = NormalVector;
     C = zeros(489,489,2);
     C(:,:,1) = YGrid;
     C(:,:,2) = XGrid;
-    
+
     % - "repmat" of A and B
     ATemp = C*0; ATemp(:,:,1) = ATemp(:,:,1)+A(1); ATemp(:,:,2) = ATemp(:,:,2)+A(2); A = ATemp;clear ATemp;
     BTemp = C*0; BTemp(:,:,1) = BTemp(:,:,1)+B(1); BTemp(:,:,2) = BTemp(:,:,2)+B(2); B = BTemp;clear BTemp;
     NTemp = C*0; NTemp(:,:,1) = NTemp(:,:,1)+NormalVector(1); NTemp(:,:,2) = NTemp(:,:,2)+NormalVector(2); N = NTemp;clear NTemp;
-    
+
     BA = (B-A);
     CA = (C-A);
-    
-    
+
+
     D  = (CA - repmat(sum(CA.*BA,3)./sum(BA.*BA,3),1,1,2).*BA);
     Distances = sum(D.*N ,3);
 end
