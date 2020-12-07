@@ -1,5 +1,5 @@
-% - Create the Analyzer-Object
-DataFolder = 'C:\Users\DQSIM team\Documents\MATLAB\SDT2D\adwin\trunk\Scripts\+Karthik\Data Analysis\Compression Analysis';
+%% - create the Analyzer-Object and choose file
+DataFolder = 'C:\IaP\Measurements\2020-12-02_HorizontalCompression';
 SaveFolder = 'Results';
 options={};
 %options=[options,{'Parameter','Value'}];
@@ -15,48 +15,66 @@ Analyzer.getFileNames;
 k = 1;
 meas = Analyzer.loadMeasurement(k);
 global colours
-colours = {[0, 0.4470, 0.7410],[0.8500, 0.3250, 0.0980],[0.9290, 0.6940, 0.1250],[0.4940, 0.1840, 0.5560],[0.4660, 0.6740, 0.1880], [0.6350, 0.0780, 0.1840]};
-
+colours = {[0, 0.4470, 0.7410]     ,[0.8500, 0.3250, 0.0980],...
+           [0.9290, 0.6940, 0.1250],[0.4940, 0.1840, 0.5560],...
+           [0.4660, 0.6740, 0.1880], [0.6350, 0.0780, 0.1840]};
+%% - set Analysis parameterss
 AnalysisMethod = 'isorings'; % options - "isorings" | "strips"
-AnalyzeFWHMRatio = true;
-AnalyzePeakIntensityRatio = true;
-PlotAtomCountAndSurvival = false;
-
+DoPlotAnalysisOfFWHMRatio = true;
+DoPlotAnalysisOfPeakIntensityRatio = true;
+DoPlotAtomCountAndSurvival = false;
+%% - set Origin (VDT-Center) and initial fit parameters
+switch Analyzer.CurrentMeasurementName
+    case 'meas20200714T202508' %% 2020-07-14
+        % - VDT Position
+        VDT_Position  = [262 301];
+        spreadratio_fit_guess = [0.1; 0.00001; 1;  0; 1.4]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
+        spreadratio_fixed_params = [nan,nan,nan,nan,nan];
+        % - Initial Fit parameter
+        peak_brightness_fit_guess = [0.1; 0; 1;  0; 1.4]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
+        peak_brightness_fixed_params = [nan,nan,nan,nan,nan];
+    case 'meas20200803T102411' %% 2020-08-03 
+        % - VDT Position
+        VDT_Position  = [253 279];
+        spreadratio_fit_guess = [0.05; 0;  0;  0; 0.515]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
+        spreadratio_fixed_params = [nan,nan,0.63,0,nan];
+        % - Initial Fit parameter
+        peak_brightness_fit_guess = [0.1; 0; 1;  0; 1.4]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
+        peak_brightness_fixed_params = [nan,nan,nan,nan,nan];
+    otherwise 
+        % - VDT Position
+        VDT_Position = Measurements.Measurement.getDefaultSettings.Origin;
+        % - Initial Fit parameter
+        error('do: set  Initial Fit parameter')
+end
+%% - do Analysis
 switch AnalysisMethod
     case 'isorings'
-        [Ratios_Spread, spread_errors, Ratios_PeakIntensities, peakint_errors] = isoRingAnalysis(meas,Analyzer);
+        [Ratios_Spread, spread_errors, Ratios_PeakIntensities, peakint_errors] = isoRingAnalysis(meas, VDT_Position, Analyzer);
     case 'strips'
-        [Ratios_Spread, spread_errors, Ratios_PeakIntensities, peakint_errors] = stripAnalysis(meas,Analyzer);
+        [Ratios_Spread, spread_errors, Ratios_PeakIntensities, peakint_errors] = stripAnalysis(meas, VDT_Position, Analyzer);
     case 'marginals'
         marginalAnalysis(meas,Analyzer);
 end
-%%
-if AnalyzeFWHMRatio
-%% 2020-07-14
-%     fit_guess = [0.05; 0;  0.5;  0; 0.55]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
-%     fixed_params = [nan,nan,nan,0,nan];
-%% 2020-07-14 Changed VDT Position
-    fit_guess = [0; 0;  0.5;  0; 0.6]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
-    fixed_params = [nan,0.0008,nan,0,nan];
-%% 2020-08-03 
-%     fit_guess = [0.05; 0;  0;  0; 0.515]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
-%     fixed_params = [nan,nan,0.63,0,nan];
-%% 2020-08-03 Changed VDT Position
-%     fit_guess = [0.05; 0;  0;  0; 0.515]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
-%     fixed_params = [nan,nan,0.63,0,nan];
-    analyzeFWHMRatio(meas, Analyzer, Ratios_Spread, spread_errors, fit_guess, fixed_params)
+%% - do plots 
+if true
+    %% - PlotAnalysisOfFWHMRatio
+    if DoPlotAnalysisOfFWHMRatio
+        plotAnalysisOfFWHMRatio(meas, Analyzer, Ratios_Spread, spread_errors, spreadratio_fit_guess, spreadratio_fixed_params)
+    end
+    %% - AnalyzePeakIntensityRatio
+    if DoPlotAnalysisOfPeakIntensityRatio
+        plotAnalysisOfPeakIntensityRatio(meas, Analyzer, Ratios_PeakIntensities, peakint_errors, peak_brightness_fit_guess, peak_brightness_fixed_params)
+    end
+    %% - PlotAtomCountAndSurvival
+    if DoPlotAtomCountAndSurvival
+        plotAtomCountAndSurvival(meas, Analyzer)
+    end
 end
-%%
-if AnalyzePeakIntensityRatio
-    fit_guess = [0.1; 0.00001; 1;  0; 1.4]; %['Amplitude','Decay Constant', 'Frequency(kHz)', 'Phase', 'Offset']
-    fixed_params = [nan,nan,nan,nan,nan];
-    analyzePeakIntenisityRatio(meas, Analyzer, Ratios_PeakIntensities, peakint_errors, fit_guess, fixed_params)
-end
-%%
-if PlotAtomCountAndSurvival
-    plotAtomCountAndSurvival(meas, Analyzer)
-end
-function [Ratios_Spread, spread_errors, Ratios_PeakIntensities, peakint_errors] = isoRingAnalysis(meas, Analyzer)
+
+
+%% - helperFunctions
+function [Ratios_Spread, spread_errors, Ratios_PeakIntensities, peakint_errors] = isoRingAnalysis(meas, VDT_Position, Analyzer)
 global colours
 %% - Get and correct average images
 [AverageImages,~,AverageBackGroundImageFull] = meas.getAverageImages;
@@ -67,14 +85,7 @@ CorrectedAverageImages = AverageImages-AverageBackGroundImageFull;
 CorrectedAverageImages = bsxfun(@times,CorrectedAverageImages,reshape(EtaloningMask,1,1,ImageArraySize(end-1),ImageArraySize(end)));
 %% - Analyze by plotting an iso-ring around a point
 Ratios_Spread = zeros(1,size(CorrectedAverageImages,1));
-Ratios_PeakIntensities = zeros(1,size(CorrectedAverageImages,1));
-%%
-% VDT_Position = Measurements.Measurement.getDefaultSettings.Origin;
-%% 2020-07-14
-% VDT_Position  = [258 301]; 
-VDT_Position  = [260 301]; 
-%% 2020-08-03
-%VDT_Position  = [253 279]; 
+Ratios_PeakIntensities = zeros(1,size(CorrectedAverageImages,1)); 
 %%
 [~,~,~,~,RSquared] = FluoImageAnalysis.ImageAnalysis.getPosition(zeros(489),'Origin',VDT_Position,'Units','um');
 
@@ -118,8 +129,8 @@ end
 Ratios_Spread = zeros(1,size(CorrectedAverageImages,1));
 Ratios_PeakIntensities = zeros(1,size(CorrectedAverageImages,1));
 fignumber = 1;
-figure(fignumber);
-set(gcf, 'Position', [8, 36, 1892, 958]) %Width = 521 for original layout of 3 subplots without images
+f_h_main = figure(fignumber);
+set(f_h_main, 'Name', 'Main', 'Position', [8, 36, 1892, 958]); %Width = 521 for original layout of 3 subplots without images
 win(1) = subplot(1, 3, 1);
 win(2) = subplot(2, 3, 2);
 win(3) = subplot(2, 3, 3);
@@ -212,7 +223,7 @@ for Run = 1:size(CorrectedAverageImages,1)
     end
 end
 end
-function [Ratios_Spread, spread_errors, Ratios_PeakIntensities, peakint_errors] = stripAnalysis(meas, Analyzer)  
+function [Ratios_Spread, spread_errors, Ratios_PeakIntensities, peakint_errors] = stripAnalysis(meas, VDT_Position, Analyzer)  
 global colours
 %% - Get and correct average images
 [AverageImages,~,AverageBackGroundImageFull] = meas.getAverageImages;
@@ -225,9 +236,8 @@ CorrectedAverageImages = bsxfun(@times,CorrectedAverageImages,reshape(EtaloningM
 Ratios_Spread = zeros(1,size(CorrectedAverageImages,1));
 Ratios_PeakIntensities = zeros(1,size(CorrectedAverageImages,1));
 %Ratios_FWHM = zeros(1,size(CorrectedAverageImages,1));
-Point = Measurements.Measurement.getDefaultSettings.Origin;
 options = {};
-options = [options,{'Origin',Point}];
+options = [options,{'Origin',VDT_Position}];
 options = [options,{'Units','um'}];
 [~,~,X,Y,~] = FluoImageAnalysis.ImageAnalysis.getPosition(zeros(489),options{:});
 m = size(meas.runData.usedScanParameters.WaitTimeHorizontal,1);
@@ -262,8 +272,8 @@ for i = 1:m
     peakint_errors(i) = std(Ratios_PeakIntensities(1:n))/sqrt(n);
 end
 fignumber = 2;
-figure(fignumber);
-set(gcf, 'Position', [8, 36, 1892, 958]) %Width = 521 for original layout of 3 subplots without images
+f_h_main = figure(fignumber);
+set(f_h_main, 'Name', 'Main', 'Position', [8, 36, 1892, 958]); %Width = 521 for original layout of 3 subplots without images
 win(1) = subplot(1, 3, 1);
 win(2) = subplot(2, 3, 2);
 win(3) = subplot(2, 3, 3);
@@ -307,11 +317,11 @@ for Run = 1:size(CorrectedAverageImages,1)
     grid(win(2), 'on')
     set(win(2), 'xlim', [0 max(meas.analysisData.MWSpec.xvals)]);
     %set(win(2), 'ylim', [0 0.8]);
-    set(get(win(2),'XLabel'), 'String', 'Wait Time \mus','FontSize',16);
+    set(get(win(2),'XLabel'), 'String', 'Hold Time \mus','FontSize',16);
     set(get(win(2),'YLabel'), 'String', 'Ratio','FontSize',16);
     legend(win(2), {'Spread - Final:Initial'}, 'Location', 'northeast','FontSize',10);
     
-    [xvals,yvals,~,~,~] = FluoImageAnalysis.ImageAnalysis.getPosition(zeros(49*10),'Origin',[230 282],'pixelsPerLatticeSite',1.7);
+    [xvals,yvals,~,~,~] = FluoImageAnalysis.ImageAnalysis.getPosition(zeros(49*10),'Origin', VDT_Position,'pixelsPerLatticeSite',1.7);
     imagesc(win(4),xvals,yvals, flipud(FirstImage));
     set(win(4), 'xlim', [min(xvals) max(xvals)]);
     set(win(4), 'ylim', [min(yvals) max(yvals)]);
@@ -329,7 +339,7 @@ for Run = 1:size(CorrectedAverageImages,1)
     grid(win(3), 'on')
     set(win(3), 'xlim', [0 max(meas.analysisData.MWSpec.xvals)]);
     %set(win(3), 'ylim', [1 1.3]);
-    set(get(win(3),'XLabel'), 'String', 'Wait Time \mus','FontSize',16);
+    set(get(win(3),'XLabel'), 'String', 'Hold Time \mus','FontSize',16);
     set(get(win(3),'YLabel'), 'String', 'Ratio','FontSize',16);
     legend(win(3), {'Peak Intensity - Final:Initial'}, 'Location', 'northeast','FontSize',10);
     
@@ -471,7 +481,7 @@ for Run = 1:size(CorrectedAverageImages,1)
     end
 end
 end
-function analyzeFWHMRatio(meas, Analyzer,Ratios_Spread, spread_errors, fit_guess, fixed_params)
+function plotAnalysisOfFWHMRatio(meas, Analyzer,Ratios_Spread, spread_errors, fit_guess, fixed_params)
 %%
 %     plot(meas.runData.usedScanParameters.WaitTimeHorizontal(:,1), Ratios_Spread, '--', 'Color', colours{2}, 'HandleVisibility','off');
 %     plot(meas.runData.usedScanParameters.WaitTimeHorizontal(:,1), Ratios_PeakIntensities, '--', 'Color', colours{6},'HandleVisibility','off');
@@ -515,16 +525,50 @@ CompressionRatioFit = FitDataGauss(...
     'LowerBoundParams',[0,0,0,-inf,0],...
     'UpperBoundParams',[inf,inf,inf,inf,1],...
     'StandardErrors',compressionRatios.stderr);
+
 fignumber = 4;
-figure(fignumber);
-subplot(2,1,1);
+f_h = figure(fignumber);
 clf;
+set(f_h, 'Name', 'Fits', 'Position', [1001,393.67,1170.67,945.34]);
+
+s_1 = subplot(2, 2, 1);
 CompressionRatioFit.doFit;
 compressionRatios.plotData;
 CompressionRatioFit.plotFitModel;
-CompressionRatioFit.printFitReport;
-ylim([0 1.2])
-grid on
+set(get(s_1, 'XLabel'), 'String', 'HoldTime (\mus)',  'FontSize', 16);
+set(get(s_1, 'YLabel'), 'String', 'RMS Spread Ratio', 'FontSize', 16);
+set(s_1, 'YLim', [0 1.2]);
+grid(s_1, 'on');
+
+s_2 = subplot(2, 2, 2);
+helperFunctions.CreateBlankPlot(s_2);
+FitReport = CompressionRatioFit.printFitReport;
+% temp = FitReport{2};
+% FitReport{2} = temp(1:end-10);
+% temp = FitReport{end};
+% FitReport{end} = temp(1:end-15);
+text(s_2,-0.2,0.8,FitReport,'VerticalAlignment','top')
+
+s_3 = subplot(2, 2, 3);
+helperFunctions.CreateBlankPlot(s_3);
+s_4 = subplot(2, 2, 4);
+helperFunctions.CreateBlankPlot(s_4);
+
+f_h_main = findobj('Type', 'figure', 'Name', 'Main');
+f_h_main_subplots = get(f_h_main, 'Children');
+SpreadSubplot = f_h_main_subplots(9);
+cla(SpreadSubplot, 'reset');
+FigAxes = findobj('Parent',f_h,'Type','axes'); 
+if ~isempty(FigAxes)
+    FAxes = FigAxes(4);  % assume just the one axes
+    copyobj(get(FAxes,'Children'), SpreadSubplot);
+end
+
+set(get(SpreadSubplot, 'XLabel'), 'String', 'Hold Time (\mus)', 'FontSize', 16);
+set(get(SpreadSubplot, 'YLabel'), 'String', 'Ratio', 'FontSize', 16);
+SpreadSubplot.YLim = [0 1.2];
+grid(SpreadSubplot, 'on');
+
 if Analyzer.SavePlot
     SaveAppend={...
         'FWHM Ratios with Fit',...
@@ -532,7 +576,7 @@ if Analyzer.SavePlot
     print(fignumber,[Analyzer.SaveFolder filesep SaveAppend{1}], '-dpng','-r300');
 end
 end
-function analyzePeakIntenisityRatio(meas, Analyzer, Ratios_PeakIntensities, peakint_errors, fit_guess, fixed_params)
+function plotAnalysisOfPeakIntensityRatio(meas, Analyzer, Ratios_PeakIntensities, peakint_errors, fit_guess, fixed_params)
 compressionRatios = analysis_data(...
     'alpha',1-0.68,...
     'PlotVerticalBars','no');
@@ -552,16 +596,48 @@ CompressionRatioFit = FitDataGauss(...
     'LowerBoundParams',[0,0,0,-inf,0],...
     'UpperBoundParams',[inf,inf,inf,inf,inf],...
     'StandardErrors',compressionRatios.stderr);
-fignumber = 5;
-figure(fignumber);
-subplot(2,1,1);
-clf;
+% fignumber = 5;
+% f_h = figure(fignumber);
+% clf;
+f_h = findobj('Type', 'figure', 'Name', 'Fits');
+f_h_subplots = get(f_h, 'Children');
+
+s_3 = f_h_subplots(2);
+cla(s_3, 'reset');
+set(f_h, 'currentaxes', s_3);
 CompressionRatioFit.doFit;
 compressionRatios.plotData;
 CompressionRatioFit.plotFitModel;
-CompressionRatioFit.printFitReport;
-ylim([0 1.2])
-grid on
+set(get(s_3, 'XLabel'), 'String', 'HoldTime (\mus)');
+set(get(s_3, 'YLabel'), 'String', 'Peak Brightness');
+set(s_3, 'YLim', [0 1.8]);
+grid(s_3, 'on');
+
+s_4 = f_h_subplots(1);
+set(f_h, 'currentaxes', s_4);
+FitReport = CompressionRatioFit.printFitReport;
+% temp = FitReport{2};
+% FitReport{2} = temp(1:end-10);
+% temp = FitReport{end};
+% FitReport{end} = temp(1:end-15);
+text(s_4,-0.2,0.8,FitReport,'VerticalAlignment','top')
+
+f_h_main = findobj('Type', 'figure', 'Name', 'Main');
+f_h_main_subplots = get(f_h_main, 'Children');
+PBSubplot = f_h_main_subplots(7);
+cla(PBSubplot, 'reset');
+FigAxes = findobj('Parent',f_h,'Type','axes'); 
+if ~isempty(FigAxes)
+    FAxes = FigAxes(2);  % assume just the one axes
+    copyobj(get(FAxes,'Children'), PBSubplot);
+end
+
+
+set(get(PBSubplot, 'XLabel'), 'String', 'Hold Time (\mus)', 'FontSize', 16);
+set(get(PBSubplot, 'YLabel'), 'String', 'Ratio', 'FontSize', 16);
+PBSubplot.YLim = [0 1.8];
+grid(PBSubplot, 'on');
+
 if Analyzer.SavePlot
     SaveAppend={...
         'Peak Intensity Ratios with Fit',...
@@ -572,7 +648,7 @@ end
 function plotAtomCountAndSurvival(meas, Analyzer)
 global colours
 %%  Estimating atom count from fluorescence
-fignumber = 6;
+fignumber = 5;
 figure(fignumber);
 set(gcf, 'Position', [500, 200, 900, 600])
 cf = 3.8785e-05;
